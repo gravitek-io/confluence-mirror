@@ -1,3 +1,6 @@
+import type { AuthStrategy } from "./auth-strategies";
+import { BasicAuthStrategy, OAuth2Strategy } from "./auth-strategies";
+
 export interface ConfluencePage {
   id: string;
   title: string;
@@ -53,30 +56,93 @@ export class ConfluenceApiError extends Error {
   }
 }
 
+/**
+ * Confluence API client supporting both Basic Auth and OAuth2 authentication
+ */
 export class ConfluenceClient {
-  private readonly apiKey: string;
-  private readonly baseUrl: string;
-  private readonly email: string;
+  private readonly baseUrl: string | null; // For Basic Auth only
+  private readonly authStrategy: AuthStrategy;
 
-  constructor(baseUrl: string, email: string, apiKey: string) {
-    this.baseUrl = baseUrl.replace(/\/$/, ""); // Remove trailing slash
-    this.email = email;
-    this.apiKey = apiKey;
+  /**
+   * Create a ConfluenceClient with a specific authentication strategy
+   * @param authStrategy - Authentication strategy (BasicAuthStrategy or OAuth2Strategy)
+   * @param baseUrl - Base URL for Confluence instance (required only for Basic Auth)
+   */
+  constructor(authStrategy: AuthStrategy, baseUrl?: string) {
+    this.authStrategy = authStrategy;
+    this.baseUrl = baseUrl ? baseUrl.replace(/\/$/, "") : null;
   }
 
+  /**
+   * Factory method for Basic Authentication (backward compatibility)
+   * @param baseUrl - Confluence instance URL (e.g., https://your-domain.atlassian.net)
+   * @param email - User email
+   * @param apiKey - API key
+   * @returns ConfluenceClient instance
+   */
+  static createWithBasicAuth(
+    baseUrl: string,
+    email: string,
+    apiKey: string
+  ): ConfluenceClient {
+    return new ConfluenceClient(new BasicAuthStrategy(email, apiKey), baseUrl);
+  }
+
+  /**
+   * Factory method for OAuth2 authentication with service accounts
+   * @param clientId - OAuth2 Client ID
+   * @param clientSecret - OAuth2 Client Secret
+   * @returns ConfluenceClient instance
+   */
+  static createWithOAuth2(
+    clientId: string,
+    clientSecret: string
+  ): ConfluenceClient {
+    return new ConfluenceClient(new OAuth2Strategy(clientId, clientSecret));
+  }
+
+  /**
+   * Construct the full API URL based on authentication strategy
+   * - Basic Auth: https://{domain}.atlassian.net/wiki/rest/api/{endpoint}
+   * - OAuth2: https://api.atlassian.com/ex/confluence/{cloudId}/rest/api/{endpoint}
+   */
+  private async getApiUrl(endpoint: string): Promise<string> {
+    // OAuth2: Use api.atlassian.com with cloudId
+    if (this.authStrategy instanceof OAuth2Strategy) {
+      const cloudId = await this.authStrategy.getCloudId();
+      return `https://api.atlassian.com/ex/confluence/${cloudId}/rest/api/${endpoint}`;
+    }
+
+    // Basic Auth: Use direct instance URL
+    if (!this.baseUrl) {
+      throw new Error("Base URL is required for Basic Authentication");
+    }
+    return `${this.baseUrl}/wiki/rest/api/${endpoint}`;
+  }
+
+  /**
+   * Make an authenticated request to the Confluence API
+   * Handles token refresh on 401 errors for OAuth2
+   */
   private async makeRequest<T>(endpoint: string): Promise<T> {
-    const url = `${this.baseUrl}/wiki/rest/api/${endpoint}`;
+    const url = await this.getApiUrl(endpoint);
+    const authHeaders = await this.authStrategy.getAuthHeaders();
 
     const response = await fetch(url, {
       headers: {
-        Authorization: `Basic ${Buffer.from(
-          `${this.email}:${this.apiKey}`
-        ).toString("base64")}`,
+        ...authHeaders,
         Accept: "application/json",
         "Content-Type": "application/json",
       },
       cache: "no-store", // Always fetch fresh data for confluence pages
     });
+
+    // Handle 401 errors with token refresh for OAuth2
+    if (response.status === 401 && this.authStrategy.refreshAuth) {
+      await this.authStrategy.refreshAuth();
+      // Retry request with new token
+      return this.makeRequest<T>(endpoint);
+    }
 
     if (!response.ok) {
       const errorBody = await response.text();
