@@ -1,5 +1,6 @@
 import React from "react";
-import { ConfluenceClient, ConfluenceChildPage } from "confluence-mirror-core";
+import { ConfluenceChildPage } from "confluence-mirror-core";
+import { confluenceClient } from "@/lib/confluence";
 
 // Type pour un item de navigation server-side
 export interface NavigationItem {
@@ -78,17 +79,9 @@ function NavigationTreeItem({ item, level = 0 }: NavigationItemProps) {
   );
 }
 
-// Configuration for NavigationTreeServer
-interface NavigationTreeServerConfig {
-  baseUrl: string;
-  email: string;
-  apiKey: string;
-}
-
 // Props for the main component
 interface NavigationTreeServerProps {
   pageId: string;
-  config: NavigationTreeServerConfig;
   baseUrl?: string; // URL de base pour la navigation dans l'app
   className?: string;
   title?: string;
@@ -96,11 +89,10 @@ interface NavigationTreeServerProps {
 
 /**
  * NavigationTreeServer - Version Server Component
- * Retrieves the data server-side via the ConfluenceClient
+ * Retrieves the data server-side via the Confluence client
  */
 export default async function NavigationTreeServer({
   pageId,
-  config,
   baseUrl,
   className = "",
   title = "Navigation",
@@ -109,12 +101,7 @@ export default async function NavigationTreeServer({
   let error: string | null = null;
 
   try {
-    const client = new ConfluenceClient(
-      config.baseUrl,
-      config.email,
-      config.apiKey
-    );
-    const childPages = await client.getChildPages(pageId);
+    const childPages = await confluenceClient.getChildPages(pageId);
 
     navigationItems = childPages.map(
       (page: ConfluenceChildPage): NavigationItem => ({

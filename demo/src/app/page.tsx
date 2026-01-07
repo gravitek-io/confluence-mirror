@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import ConfluenceMirrorServer from "@/components/confluence/ConfluenceMirrorServer";
 import ConfluenceFormDemo from "@/components/demo/ConfluenceFormDemo";
-import { confluenceConfig } from "@/lib/confluence";
 
 interface HomeProps {
   searchParams: Promise<{ pageId?: string; url?: string }>;
@@ -54,7 +53,6 @@ export default async function Home({ searchParams }: HomeProps) {
             >
               <ConfluenceMirrorServer
                 key={pageId || url}
-                config={confluenceConfig}
                 pageId={pageId}
                 url={url}
                 baseUrl="http://localhost:3000"

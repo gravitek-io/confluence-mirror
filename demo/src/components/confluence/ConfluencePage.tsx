@@ -1,4 +1,5 @@
 import { ConfluenceClient, processADFWithMedia, processADFWithTOC } from 'confluence-mirror-core';
+import { confluenceClient } from '@/lib/confluence';
 import OptimizedADFRenderer from './OptimizedAdfRenderer';
 
 interface ConfluencePageProps {
@@ -7,21 +8,14 @@ interface ConfluencePageProps {
   showHeader?: boolean;
 }
 
-interface ConfluencePageConfig {
-  baseUrl: string;
-  email: string;
-  apiKey: string;
-}
-
-export default async function ConfluencePage({ 
-  pageId, 
+export default async function ConfluencePage({
+  pageId,
   url,
-  config,
   showHeader = true
-}: ConfluencePageProps & { config: ConfluencePageConfig }) {
+}: ConfluencePageProps) {
   // Extract pageId from URL if provided
   let resolvedPageId: string | undefined = pageId;
-  
+
   try {
     // Validate input parameters
     if (!pageId && !url) {
@@ -34,8 +28,6 @@ export default async function ConfluencePage({
         </div>
       );
     }
-
-    const confluenceClient = new ConfluenceClient(config.baseUrl, config.email, config.apiKey);
     
     if (url && !pageId) {
       resolvedPageId = ConfluenceClient.extractPageIdFromUrl(url) || undefined;

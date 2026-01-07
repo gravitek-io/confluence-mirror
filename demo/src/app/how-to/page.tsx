@@ -88,11 +88,32 @@ module.exports = {
             </p>
             <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
               {`// src/lib/confluence.ts
-export const confluenceConfig = {
-  baseUrl: process.env.CONFLUENCE_BASE_URL!,
-  email: process.env.CONFLUENCE_EMAIL!,
-  apiKey: process.env.CONFLUENCE_API_KEY!
-};`}
+import { ConfluenceClient } from "confluence-mirror-core";
+
+// Automatic authentication detection:
+// - OAuth2 if CONFLUENCE_OAUTH_CLIENT_ID and CONFLUENCE_OAUTH_CLIENT_SECRET are set
+// - Basic Auth if CONFLUENCE_BASE_URL, CONFLUENCE_EMAIL, and CONFLUENCE_API_KEY are set
+
+function createConfluenceClient(): ConfluenceClient {
+  const oauthClientId = process.env.CONFLUENCE_OAUTH_CLIENT_ID;
+  const oauthClientSecret = process.env.CONFLUENCE_OAUTH_CLIENT_SECRET;
+
+  if (oauthClientId && oauthClientSecret) {
+    return ConfluenceClient.createWithOAuth2(oauthClientId, oauthClientSecret);
+  }
+
+  const baseUrl = process.env.CONFLUENCE_BASE_URL;
+  const email = process.env.CONFLUENCE_EMAIL;
+  const apiKey = process.env.CONFLUENCE_API_KEY;
+
+  if (baseUrl && email && apiKey) {
+    return ConfluenceClient.createWithBasicAuth(baseUrl, email, apiKey);
+  }
+
+  throw new Error("Authentication credentials required");
+}
+
+export const confluenceClient = createConfluenceClient();`}
             </pre>
           </div>
         </section>
@@ -114,10 +135,8 @@ export const confluenceConfig = {
               </p>
               <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
                 {`import ConfluenceMirrorServer from "@/components/confluence/ConfluenceMirrorServer";
-import { confluenceConfig } from "@/lib/confluence";
 
 <ConfluenceMirrorServer
-  config={confluenceConfig}
   pageId="123456"
   showNavigation={true}
 />`}
@@ -135,22 +154,19 @@ import { confluenceConfig } from "@/lib/confluence";
               <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
                 {`import ConfluencePage from "@/components/confluence/ConfluencePage";
 import NavigationTreeServer from "@/components/confluence/NavigationTreeServer";
-import { confluenceConfig } from "@/lib/confluence";
 
 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
   <div className="lg:col-span-1">
-    <NavigationTreeServer 
-      pageId="123456" 
-      config={confluenceConfig} 
-      title="Navigation" 
+    <NavigationTreeServer
+      pageId="123456"
+      title="Navigation"
     />
   </div>
-  
+
   <div className="lg:col-span-2">
-    <ConfluencePage 
-      pageId="123456" 
-      config={confluenceConfig} 
-      showHeader={false} 
+    <ConfluencePage
+      pageId="123456"
+      showHeader={false}
     />
   </div>
 </div>`}
