@@ -15,7 +15,7 @@
   "dependencies": {
     "@tailwindcss/postcss": "^4.1.11",
     "confluence-mirror-core": "file:../packages/core",
-    "next": "15.4.7",
+    "next": "15.4.10",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwindcss": "^4.1.11"
