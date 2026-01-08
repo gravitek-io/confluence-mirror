@@ -53,12 +53,34 @@ export default async function ConfluencePage({
       );
     }
 
-    const page = await confluenceClient.getPage(resolvedPageId);
-    
+    // Fetch page with better error handling
+    let page;
+    try {
+      page = await confluenceClient.getPage(resolvedPageId);
+    } catch (error) {
+      console.error('Failed to fetch Confluence page:', error);
+      return (
+        <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Failed to load page</h3>
+          <p className="text-red-700 mb-4">
+            {error instanceof Error ? error.message : 'Unknown error occurred'}
+          </p>
+          <details className="mt-4">
+            <summary className="text-sm text-red-600 cursor-pointer hover:text-red-800">
+              Technical details
+            </summary>
+            <pre className="mt-2 text-xs text-red-600 bg-red-100 p-3 rounded overflow-x-auto">
+              {error instanceof Error ? error.stack : String(error)}
+            </pre>
+          </details>
+        </div>
+      );
+    }
+
     // Get the ADF content
     const adfContent = page.body.atlas_doc_format?.value;
     const storageContent = page.body.storage?.value;
-    
+
     if (!adfContent) {
       return (
         <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">

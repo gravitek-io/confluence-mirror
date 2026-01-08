@@ -114,8 +114,14 @@ export default async function NavigationTreeServer({
       })
     );
   } catch (err) {
-    error = err instanceof Error ? err.message : "Failed to load navigation";
+    const errorMessage = err instanceof Error ? err.message : "Failed to load navigation";
+    error = errorMessage;
     console.error("Navigation fetch error:", err);
+    console.error("Error details:", {
+      pageId,
+      message: errorMessage,
+      stack: err instanceof Error ? err.stack : undefined,
+    });
   }
 
   if (error) {
