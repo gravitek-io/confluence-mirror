@@ -1,17 +1,10 @@
 import React from "react";
+import { ConfluenceClient } from "confluence-mirror-core";
 import ConfluencePage from "./ConfluencePage";
 import NavigationTreeServer from "./NavigationTreeServer";
 
-// Configuration Confluence
-export interface ConfluenceConfig {
-  baseUrl: string;
-  email: string;
-  apiKey: string;
-}
-
 // Props du composant
 interface ConfluenceMirrorServerProps {
-  config: ConfluenceConfig;
   pageId?: string;
   url?: string;
   baseUrl?: string; // URL de base pour la navigation
@@ -26,7 +19,6 @@ interface ConfluenceMirrorServerProps {
  * Tous les appels API sont faits côté serveur
  */
 export default async function ConfluenceMirrorServer({
-  config,
   pageId,
   url,
   baseUrl,
@@ -42,7 +34,6 @@ export default async function ConfluenceMirrorServer({
   // Résolution du pageId si URL fournie
   let resolvedPageId = pageId;
   if (url && !pageId) {
-    const { ConfluenceClient } = await import("confluence-mirror-core");
     resolvedPageId = ConfluenceClient.extractPageIdFromUrl(url) || undefined;
   }
 
@@ -68,7 +59,6 @@ export default async function ConfluenceMirrorServer({
             <div className="sticky top-8">
               <NavigationTreeServer
                 pageId={resolvedPageId}
-                config={config}
                 baseUrl={baseUrl}
                 title={navigationTitle}
               />
@@ -77,20 +67,12 @@ export default async function ConfluenceMirrorServer({
 
           {/* Contenu principal */}
           <div className="lg:col-span-2">
-            <ConfluencePage
-              pageId={resolvedPageId}
-              config={config}
-              showHeader={true}
-            />
+            <ConfluencePage pageId={resolvedPageId} showHeader={true} />
           </div>
         </div>
       ) : (
         /* Sans navigation - pleine largeur */
-        <ConfluencePage
-          pageId={resolvedPageId}
-          config={config}
-          showHeader={true}
-        />
+        <ConfluencePage pageId={resolvedPageId} showHeader={true} />
       )}
     </div>
   );

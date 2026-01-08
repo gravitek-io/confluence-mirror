@@ -1,4 +1,5 @@
 import { ConfluenceClient, processADFWithMedia, processADFWithTOC } from 'confluence-mirror-core';
+import { confluenceClient } from '@/lib/confluence';
 import OptimizedADFRenderer from './OptimizedAdfRenderer';
 
 interface ConfluencePageProps {
@@ -7,21 +8,14 @@ interface ConfluencePageProps {
   showHeader?: boolean;
 }
 
-interface ConfluencePageConfig {
-  baseUrl: string;
-  email: string;
-  apiKey: string;
-}
-
-export default async function ConfluencePage({ 
-  pageId, 
+export default async function ConfluencePage({
+  pageId,
   url,
-  config,
   showHeader = true
-}: ConfluencePageProps & { config: ConfluencePageConfig }) {
+}: ConfluencePageProps) {
   // Extract pageId from URL if provided
   let resolvedPageId: string | undefined = pageId;
-  
+
   try {
     // Validate input parameters
     if (!pageId && !url) {
@@ -34,8 +28,6 @@ export default async function ConfluencePage({
         </div>
       );
     }
-
-    const confluenceClient = new ConfluenceClient(config.baseUrl, config.email, config.apiKey);
     
     if (url && !pageId) {
       resolvedPageId = ConfluenceClient.extractPageIdFromUrl(url) || undefined;
@@ -61,12 +53,34 @@ export default async function ConfluencePage({
       );
     }
 
-    const page = await confluenceClient.getPage(resolvedPageId);
-    
+    // Fetch page with better error handling
+    let page;
+    try {
+      page = await confluenceClient.getPage(resolvedPageId);
+    } catch (error) {
+      console.error('Failed to fetch Confluence page:', error);
+      return (
+        <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Failed to load page</h3>
+          <p className="text-red-700 mb-4">
+            {error instanceof Error ? error.message : 'Unknown error occurred'}
+          </p>
+          <details className="mt-4">
+            <summary className="text-sm text-red-600 cursor-pointer hover:text-red-800">
+              Technical details
+            </summary>
+            <pre className="mt-2 text-xs text-red-600 bg-red-100 p-3 rounded overflow-x-auto">
+              {error instanceof Error ? error.stack : String(error)}
+            </pre>
+          </details>
+        </div>
+      );
+    }
+
     // Get the ADF content
     const adfContent = page.body.atlas_doc_format?.value;
     const storageContent = page.body.storage?.value;
-    
+
     if (!adfContent) {
       return (
         <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -98,6 +112,15 @@ export default async function ConfluencePage({
 
     // Pre-process ADF with TOC extraction (server-side)
     const { enrichedDocument, tableOfContents } = processADFWithTOC(processedContent);
+
+    // Fetch child pages for the "children" macro
+    let childPages = [];
+    try {
+      childPages = await confluenceClient.getChildPages(resolvedPageId);
+    } catch (error) {
+      console.error('Failed to fetch child pages:', error);
+      // Continue without child pages
+    }
 
     return (
       <div className="bg-white rounded-lg shadow-lg border border-gray-200">
@@ -137,10 +160,11 @@ export default async function ConfluencePage({
         <div className="p-6">
           <div className="max-w-full">
             <div className="confluence-hybrid-content">
-              <OptimizedADFRenderer 
-                document={enrichedDocument} 
-                pageId={resolvedPageId} 
+              <OptimizedADFRenderer
+                document={enrichedDocument}
+                pageId={resolvedPageId}
                 tableOfContents={tableOfContents}
+                childPages={childPages}
               />
             </div>
           </div>

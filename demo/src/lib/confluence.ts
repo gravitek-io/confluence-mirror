@@ -1,18 +1,44 @@
-// Demo app configuration for Confluence client
-if (!process.env.CONFLUENCE_API_KEY) {
-  throw new Error('CONFLUENCE_API_KEY is required in environment variables');
+import { ConfluenceClient } from "confluence-mirror-core";
+
+/**
+ * Create and configure the Confluence client with automatic authentication detection
+ * Supports both OAuth2 (preferred) and Basic Authentication
+ *
+ * Priority:
+ * 1. OAuth2 if CONFLUENCE_OAUTH_CLIENT_ID and CONFLUENCE_OAUTH_CLIENT_SECRET are set
+ * 2. Basic Auth if CONFLUENCE_BASE_URL, CONFLUENCE_EMAIL, and CONFLUENCE_API_KEY are set
+ */
+function createConfluenceClient(): ConfluenceClient {
+  console.log("[Confluence Client] Initializing...");
+
+  // Option 1: OAuth2 Authentication (preferred for service accounts)
+  const oauthClientId = process.env.CONFLUENCE_OAUTH_CLIENT_ID;
+  const oauthClientSecret = process.env.CONFLUENCE_OAUTH_CLIENT_SECRET;
+
+  if (oauthClientId && oauthClientSecret) {
+    console.log("[Confluence Client] Using OAuth2 authentication");
+    console.log("[Confluence Client] Client ID:", oauthClientId.substring(0, 10) + "...");
+    return ConfluenceClient.createWithOAuth2(oauthClientId, oauthClientSecret);
+  }
+
+  // Option 2: Basic Authentication (fallback)
+  const baseUrl = process.env.CONFLUENCE_BASE_URL;
+  const email = process.env.CONFLUENCE_EMAIL;
+  const apiKey = process.env.CONFLUENCE_API_KEY;
+
+  if (baseUrl && email && apiKey) {
+    console.log("[Confluence Client] Using Basic Auth");
+    console.log("[Confluence Client] Base URL:", baseUrl);
+    return ConfluenceClient.createWithBasicAuth(baseUrl, email, apiKey);
+  }
+
+  // No valid credentials found
+  throw new Error(
+    "Authentication credentials required. Please provide either:\n" +
+      "  - OAuth2: CONFLUENCE_OAUTH_CLIENT_ID and CONFLUENCE_OAUTH_CLIENT_SECRET\n" +
+      "  - Basic Auth: CONFLUENCE_BASE_URL, CONFLUENCE_EMAIL, and CONFLUENCE_API_KEY\n\n" +
+      "See demo/.env.example for configuration instructions."
+  );
 }
 
-if (!process.env.CONFLUENCE_BASE_URL) {
-  throw new Error('CONFLUENCE_BASE_URL is required in environment variables');
-}
-
-if (!process.env.CONFLUENCE_EMAIL) {
-  throw new Error('CONFLUENCE_EMAIL is required in environment variables');
-}
-
-export const confluenceConfig = {
-  baseUrl: process.env.CONFLUENCE_BASE_URL,
-  email: process.env.CONFLUENCE_EMAIL,
-  apiKey: process.env.CONFLUENCE_API_KEY
-};
+export const confluenceClient = createConfluenceClient();
