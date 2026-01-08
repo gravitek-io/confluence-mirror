@@ -42,6 +42,9 @@ export class OAuth2TokenManager {
    * Makes a POST request to Atlassian's token endpoint with client credentials
    */
   async refreshToken(): Promise<void> {
+    console.log("[OAuth2] Requesting new access token...");
+    const startTime = Date.now();
+
     const params = new URLSearchParams({
       grant_type: "client_credentials",
       client_id: this.clientId,
@@ -56,14 +59,19 @@ export class OAuth2TokenManager {
       body: params.toString(),
     });
 
+    const elapsed = Date.now() - startTime;
+
     if (!response.ok) {
       const errorBody = await response.text();
+      console.error(`[OAuth2] Token request failed after ${elapsed}ms:`, response.status);
       throw new Error(
         `OAuth2 token request failed: ${response.status} - ${errorBody}`
       );
     }
 
     const data = await response.json();
+    console.log(`[OAuth2] Access token received in ${elapsed}ms`);
+    console.log(`[OAuth2] Token expires in ${data.expires_in}s, scopes: ${data.scope}`);
 
     this.tokens = {
       accessToken: data.access_token,

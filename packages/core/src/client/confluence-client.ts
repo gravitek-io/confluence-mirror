@@ -125,7 +125,12 @@ export class ConfluenceClient {
    * Handles token refresh on 401 errors for OAuth2
    */
   private async makeRequest<T>(endpoint: string): Promise<T> {
+    console.log(`[API] Making request to endpoint: ${endpoint}`);
+    const startTime = Date.now();
+
     const url = await this.getApiUrl(endpoint);
+    console.log(`[API] Full URL: ${url}`);
+
     const authHeaders = await this.authStrategy.getAuthHeaders();
 
     const response = await fetch(url, {
@@ -137,8 +142,12 @@ export class ConfluenceClient {
       cache: "no-store", // Always fetch fresh data for confluence pages
     });
 
+    const elapsed = Date.now() - startTime;
+    console.log(`[API] Response received in ${elapsed}ms, status: ${response.status}`);
+
     // Handle 401 errors with token refresh for OAuth2
     if (response.status === 401 && this.authStrategy.refreshAuth) {
+      console.log("[API] Got 401, refreshing token and retrying...");
       await this.authStrategy.refreshAuth();
       // Retry request with new token
       return this.makeRequest<T>(endpoint);
@@ -146,13 +155,17 @@ export class ConfluenceClient {
 
     if (!response.ok) {
       const errorBody = await response.text();
+      console.error(`[API] Request failed: ${response.status}`);
+      console.error(`[API] Error body:`, errorBody);
       throw new ConfluenceApiError(
         `Confluence API Error: ${response.status} - ${errorBody}`,
         response.status
       );
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log(`[API] Request successful, total time: ${Date.now() - startTime}ms`);
+    return data;
   }
 
   async getPage(

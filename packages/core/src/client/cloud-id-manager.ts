@@ -41,6 +41,9 @@ export class CloudIdManager {
    * @throws Error if no accessible resources are found
    */
   private async fetchCloudId(): Promise<void> {
+    console.log("[CloudID] Fetching accessible resources...");
+    const startTime = Date.now();
+
     const accessToken = await this.tokenManager.getAccessToken();
 
     const response = await fetch(this.resourcesEndpoint, {
@@ -50,16 +53,21 @@ export class CloudIdManager {
       },
     });
 
+    const elapsed = Date.now() - startTime;
+
     if (!response.ok) {
       const errorBody = await response.text();
+      console.error(`[CloudID] Failed to fetch resources after ${elapsed}ms:`, response.status);
       throw new Error(
         `Failed to fetch accessible resources: ${response.status} - ${errorBody}`
       );
     }
 
     const resources: AccessibleResource[] = await response.json();
+    console.log(`[CloudID] Resources received in ${elapsed}ms, count: ${resources.length}`);
 
     if (resources.length === 0) {
+      console.error("[CloudID] No accessible resources found!");
       throw new Error(
         "No accessible Confluence sites found for this service account. " +
           "Please verify that the service account has proper permissions."
@@ -68,5 +76,8 @@ export class CloudIdManager {
 
     // Use the first accessible resource (typically there's only one for service accounts)
     this.cloudId = resources[0].id;
+    console.log(`[CloudID] Using Cloud ID: ${this.cloudId}`);
+    console.log(`[CloudID] Site: ${resources[0].name} (${resources[0].url})`);
+    console.log(`[CloudID] Scopes: ${resources[0].scopes.join(", ")}`);
   }
 }

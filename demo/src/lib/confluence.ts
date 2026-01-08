@@ -9,11 +9,15 @@ import { ConfluenceClient } from "confluence-mirror-core";
  * 2. Basic Auth if CONFLUENCE_BASE_URL, CONFLUENCE_EMAIL, and CONFLUENCE_API_KEY are set
  */
 function createConfluenceClient(): ConfluenceClient {
+  console.log("[Confluence Client] Initializing...");
+
   // Option 1: OAuth2 Authentication (preferred for service accounts)
   const oauthClientId = process.env.CONFLUENCE_OAUTH_CLIENT_ID;
   const oauthClientSecret = process.env.CONFLUENCE_OAUTH_CLIENT_SECRET;
 
   if (oauthClientId && oauthClientSecret) {
+    console.log("[Confluence Client] Using OAuth2 authentication");
+    console.log("[Confluence Client] Client ID:", oauthClientId.substring(0, 10) + "...");
     return ConfluenceClient.createWithOAuth2(oauthClientId, oauthClientSecret);
   }
 
@@ -23,6 +27,8 @@ function createConfluenceClient(): ConfluenceClient {
   const apiKey = process.env.CONFLUENCE_API_KEY;
 
   if (baseUrl && email && apiKey) {
+    console.log("[Confluence Client] Using Basic Auth");
+    console.log("[Confluence Client] Base URL:", baseUrl);
     return ConfluenceClient.createWithBasicAuth(baseUrl, email, apiKey);
   }
 
