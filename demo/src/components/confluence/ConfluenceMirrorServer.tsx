@@ -1,5 +1,5 @@
-import React from "react";
 import { ConfluenceClient } from "confluence-mirror-core";
+import React from "react";
 import ConfluencePage from "./ConfluencePage";
 import NavigationTreeServer from "./NavigationTreeServer";
 
@@ -53,7 +53,7 @@ export default async function ConfluenceMirrorServer({
   return (
     <div className="confluence-mirror-server">
       {showNavigation ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar gauche avec navigation */}
           <div className="lg:col-span-1">
             <div className="sticky top-8">
@@ -66,7 +66,7 @@ export default async function ConfluenceMirrorServer({
           </div>
 
           {/* Contenu principal */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <ConfluencePage pageId={resolvedPageId} showHeader={true} />
           </div>
         </div>
