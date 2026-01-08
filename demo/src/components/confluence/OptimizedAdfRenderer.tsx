@@ -1,7 +1,6 @@
 import React from "react";
 import { renderADF } from "./AdfRenderer";
 import { ADFDocument, TocItem, ConfluenceChildPage } from "confluence-mirror-core";
-import OptimizedTOC from "./OptimizedToc";
 
 interface OptimizedADFRendererProps {
   document: ADFDocument;
@@ -17,13 +16,14 @@ export default function OptimizedADFRenderer({
   tableOfContents,
   childPages = [],
 }: OptimizedADFRendererProps) {
+  // Get Confluence base URL for building full URLs
+  const confluenceBaseUrl = process.env.CONFLUENCE_BASE_URL || '';
+
   return (
     <div>
-      {/* Display TOC at the top if there are headings */}
-      {tableOfContents.length > 0 && <OptimizedTOC items={tableOfContents} />}
-
       {/* Render the ADF document with pre-processed data */}
-      {renderADF(document, undefined, { pageId, childPages })}
+      {/* ToC will be rendered inline where the macro appears in the document */}
+      {renderADF(document, undefined, { pageId, childPages, confluenceBaseUrl, tableOfContents })}
     </div>
   );
 }

@@ -1,17 +1,15 @@
-import { ConfluenceClient, processADFWithMedia, processADFWithTOC } from 'confluence-mirror-core';
+import { ConfluenceClient, ConfluenceChildPage, processADFWithMedia, processADFWithTOC } from 'confluence-mirror-core';
 import { confluenceClient } from '@/lib/confluence';
 import OptimizedADFRenderer from './OptimizedAdfRenderer';
 
 interface ConfluencePageProps {
   pageId?: string;
   url?: string;
-  showHeader?: boolean;
 }
 
 export default async function ConfluencePage({
   pageId,
-  url,
-  showHeader = true
+  url
 }: ConfluencePageProps) {
   // Extract pageId from URL if provided
   let resolvedPageId: string | undefined = pageId;
@@ -114,13 +112,23 @@ export default async function ConfluencePage({
     const { enrichedDocument, tableOfContents } = processADFWithTOC(processedContent);
 
     // Fetch child pages for the "children" macro
-    let childPages = [];
+    let childPages: ConfluenceChildPage[] = [];
     try {
       childPages = await confluenceClient.getChildPages(resolvedPageId);
     } catch (error) {
       console.error('Failed to fetch child pages:', error);
       // Continue without child pages
     }
+
+    // Build the full Confluence URL
+    const confluenceBaseUrl = process.env.CONFLUENCE_BASE_URL || '';
+    const webuiPath = page._links.webui;
+
+    // Handle both relative paths and full URLs
+    // API returns paths like /spaces/KEY/pages/ID but web UI uses /wiki/spaces/KEY/pages/ID
+    const confluenceUrl = webuiPath.startsWith('http')
+      ? webuiPath
+      : `${confluenceBaseUrl}/wiki${webuiPath.startsWith('/') ? '' : '/'}${webuiPath}`;
 
     return (
       <div className="bg-white rounded-lg shadow-lg border border-gray-200">
@@ -135,7 +143,7 @@ export default async function ConfluencePage({
                 {page.version.when && (
                   <span>Updated: {new Date(page.version.when).toLocaleDateString('fr-FR', {
                     day: '2-digit',
-                    month: '2-digit', 
+                    month: '2-digit',
                     year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
@@ -143,8 +151,8 @@ export default async function ConfluencePage({
                 )}
               </div>
             </div>
-            <a 
-              href={page._links.webui}
+            <a
+              href={confluenceUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"

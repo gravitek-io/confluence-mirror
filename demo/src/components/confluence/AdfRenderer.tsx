@@ -2,12 +2,14 @@ import React from "react";
 import OptimizedMedia from "./OptimizedMedia";
 import OptimizedTOC from "./OptimizedToc";
 
-import { ADFNode, ADFDocument, ConfluenceChildPage } from 'confluence-mirror-core';
+import { ADFNode, ADFDocument, ConfluenceChildPage, TocItem } from 'confluence-mirror-core';
 
 interface RenderOptions {
   pageId?: string;
   totalColumnWidth?: number;
   childPages?: ConfluenceChildPage[];
+  confluenceBaseUrl?: string;
+  tableOfContents?: TocItem[];
 }
 
 export function renderADF(
@@ -481,9 +483,12 @@ export function renderADF(
         extensionType === "com.atlassian.confluence.macro.core" &&
         extensionKey === "toc"
       ) {
-        // TOC is now handled at the page level with pre-processed data
-        // Hide the native Confluence TOC placeholder
-        return null;
+        // Render the pre-processed ToC at the position where the macro appears
+        const tableOfContents = options?.tableOfContents || [];
+        if (tableOfContents.length === 0) {
+          return null; // No headings found, don't show ToC
+        }
+        return <OptimizedTOC key={key} items={tableOfContents} />;
       }
 
       // Special case for Confluence children macro
@@ -492,6 +497,7 @@ export function renderADF(
         extensionKey === "children"
       ) {
         const childPages = options?.childPages || [];
+        const confluenceBaseUrl = options?.confluenceBaseUrl || '';
 
         if (childPages.length === 0) {
           return (
@@ -508,14 +514,22 @@ export function renderADF(
                 <h3 className="text-sm font-semibold text-gray-700">Child Pages</h3>
               </div>
               <ul className="divide-y divide-gray-200">
-                {childPages.map((child) => (
-                  <li key={child.id}>
-                    <a
-                      href={child._links.webui}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block px-4 py-3 hover:bg-gray-50 transition-colors"
-                    >
+                {childPages.map((child) => {
+                  // Build full Confluence URL from relative path
+                  // API returns paths like /spaces/KEY/pages/ID but web UI uses /wiki/spaces/KEY/pages/ID
+                  const webuiPath = child._links.webui;
+                  const fullConfluenceUrl = webuiPath.startsWith('http')
+                    ? webuiPath
+                    : `${confluenceBaseUrl}/wiki${webuiPath.startsWith('/') ? '' : '/'}${webuiPath}`;
+
+                  return (
+                    <li key={child.id}>
+                      <a
+                        href={fullConfluenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block px-4 py-3 hover:bg-gray-50 transition-colors"
+                      >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <svg
@@ -551,7 +565,8 @@ export function renderADF(
                       </div>
                     </a>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           </div>
@@ -599,9 +614,12 @@ export function renderADF(
 
     case "table-of-contents":
     case "toc":
-      // TOC is now handled at the page level with pre-processed data
-      // Hide the native Confluence TOC elements
-      return null;
+      // Render the pre-processed ToC when encountered in the document
+      const tableOfContents = options?.tableOfContents || [];
+      if (tableOfContents.length === 0) {
+        return null; // No headings found, don't show ToC
+      }
+      return <OptimizedTOC key={key} items={tableOfContents} />;
 
     case "status":
       const statusText = node.attrs?.text || "Status";

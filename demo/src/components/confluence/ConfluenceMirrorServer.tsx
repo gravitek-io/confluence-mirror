@@ -67,12 +67,12 @@ export default async function ConfluenceMirrorServer({
 
           {/* Contenu principal */}
           <div className="lg:col-span-3">
-            <ConfluencePage pageId={resolvedPageId} showHeader={true} />
+            <ConfluencePage pageId={resolvedPageId} />
           </div>
         </div>
       ) : (
         /* Sans navigation - pleine largeur */
-        <ConfluencePage pageId={resolvedPageId} showHeader={true} />
+        <ConfluencePage pageId={resolvedPageId} />
       )}
     </div>
   );

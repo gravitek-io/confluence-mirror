@@ -103,15 +103,27 @@ export default async function NavigationTreeServer({
   try {
     const childPages = await confluenceClient.getChildPages(pageId);
 
+    // Build full Confluence URLs from relative paths
+    const confluenceBaseUrl = process.env.CONFLUENCE_BASE_URL || '';
+
     navigationItems = childPages.map(
-      (page: ConfluenceChildPage): NavigationItem => ({
-        id: page.id,
-        title: page.title,
-        type: page.type,
-        status: page.status,
-        confluenceUrl: page._links.webui,
-        appUrl: baseUrl ? `${baseUrl}?pageId=${page.id}` : undefined,
-      })
+      (page: ConfluenceChildPage): NavigationItem => {
+        const webuiPath = page._links.webui;
+        // Handle both relative paths and full URLs
+        // API returns paths like /spaces/KEY/pages/ID but web UI uses /wiki/spaces/KEY/pages/ID
+        const fullConfluenceUrl = webuiPath.startsWith('http')
+          ? webuiPath
+          : `${confluenceBaseUrl}/wiki${webuiPath.startsWith('/') ? '' : '/'}${webuiPath}`;
+
+        return {
+          id: page.id,
+          title: page.title,
+          type: page.type,
+          status: page.status,
+          confluenceUrl: fullConfluenceUrl,
+          appUrl: baseUrl ? `${baseUrl}?pageId=${page.id}` : undefined,
+        };
+      }
     );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : "Failed to load navigation";

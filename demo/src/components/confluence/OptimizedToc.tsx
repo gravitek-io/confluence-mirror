@@ -5,34 +5,6 @@ interface OptimizedTOCProps {
   items: TocItem[];
 }
 
-// Function to build a tree hierarchy (server-side)
-function buildTocTree(flatItems: TocItem[]): TocItem[] {
-  const tree: TocItem[] = [];
-  const stack: TocItem[] = [];
-
-  for (const item of flatItems) {
-    const newItem: TocItem = { ...item };
-
-    // Remove from stack all elements of higher or equal level
-    while (stack.length > 0 && stack[stack.length - 1].level >= newItem.level) {
-      stack.pop();
-    }
-
-    if (stack.length === 0) {
-      // Root element
-      tree.push(newItem);
-    } else {
-      // This is simplified since we don't have children property in TocItem
-      // In a full implementation, you'd need to extend TocItem or handle differently
-      tree.push(newItem);
-    }
-
-    stack.push(newItem);
-  }
-
-  return tree;
-}
-
 // Component to display the table of contents with proper indentation (Server Component)
 function TocDisplay({ items }: { items: TocItem[] }) {
   if (items.length === 0) return null;
