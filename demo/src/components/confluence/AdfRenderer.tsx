@@ -676,10 +676,12 @@ export function renderADF(
 
     case "mention":
       const mentionText = node.attrs?.text || node.attrs?.displayName || "@mention";
-      
+      // Remove leading @ if present, as we'll add it in the display
+      const displayName = mentionText.startsWith('@') ? mentionText.slice(1) : mentionText;
+
       return (
         <span key={key} className="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded">
-          @ {mentionText}
+          @{displayName}
         </span>
       );
 
