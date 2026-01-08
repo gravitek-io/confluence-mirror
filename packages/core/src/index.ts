@@ -14,10 +14,18 @@ export {
 export { processADFWithMedia } from "./processors/media-processor";
 export { processADFWithTOC } from "./processors/toc-processor";
 export {
+  processADFWithLinks,
+  type EnrichedLinkData,
+  type LinkProcessorOptions,
+} from "./processors/link-processor";
+export {
   processADF,
   extractTextFromADFNodes,
   generateSlug,
 } from "./processors/adf-processor";
+
+// Utilities
+export { UrlTransformer } from "./utils/url-transformer";
 
 // Types
 export * from "./types";

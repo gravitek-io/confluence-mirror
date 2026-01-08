@@ -2,13 +2,14 @@ import React from "react";
 import OptimizedMedia from "./OptimizedMedia";
 import OptimizedTOC from "./OptimizedToc";
 
-import { ADFNode, ADFDocument, ConfluenceChildPage, TocItem } from 'confluence-mirror-core';
+import { ADFNode, ADFDocument, ConfluenceChildPage, TocItem, UrlTransformer } from 'confluence-mirror-core';
 
 interface RenderOptions {
   pageId?: string;
   totalColumnWidth?: number;
   childPages?: ConfluenceChildPage[];
   confluenceBaseUrl?: string;
+  localBaseUrl?: string;
   tableOfContents?: TocItem[];
 }
 
@@ -135,18 +136,36 @@ export function renderADF(
             case "underline":
               element = <u>{element}</u>;
               break;
-            case "link":
+            case "link": {
+              const originalHref = mark.attrs?.href || "#";
+              const linkTitle = mark.attrs?.title;
+
+              // Transform Confluence URLs to local viewer URLs
+              let finalHref = originalHref;
+              if (
+                options?.confluenceBaseUrl &&
+                options?.localBaseUrl
+              ) {
+                const transformer = new UrlTransformer({
+                  confluenceBaseUrl: options.confluenceBaseUrl,
+                  localBaseUrl: options.localBaseUrl,
+                });
+                finalHref = transformer.toLocalUrl(originalHref);
+              }
+
               element = (
                 <a
-                  href={mark.attrs?.href}
+                  href={finalHref}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-800 underline"
+                  title={linkTitle}
                 >
                   {element}
                 </a>
               );
               break;
+            }
           }
         });
       }
@@ -381,7 +400,7 @@ export function renderADF(
       const Tag = node.type === "tableHeader" ? "th" : "td";
       const cellClasses =
         node.type === "tableHeader"
-          ? "border border-gray-300 px-4 py-2 bg-gray-100 font-semibold"
+          ? "border border-gray-300 px-4 py-2 bg-gray-100 font-semibold text-left"
           : "border border-gray-300 px-4 py-2";
 
       return React.createElement(
@@ -628,7 +647,7 @@ export function renderADF(
       const statusColors = {
         neutral: "bg-gray-100 text-gray-800",
         blue: "bg-blue-100 text-blue-800",
-        red: "bg-red-100 text-red-800",
+        red: "bg-red-200 text-red-900",
         yellow: "bg-yellow-100 text-yellow-800",
         green: "bg-green-100 text-green-800",
         purple: "bg-purple-100 text-purple-800",
@@ -637,7 +656,7 @@ export function renderADF(
       return (
         <span
           key={key}
-          className={`inline-block px-2 py-0.5 text-xs font-semibold rounded uppercase ${
+          className={`inline-block px-1 py-0 text-xs font-semibold rounded uppercase ${
             statusColors[statusColor as keyof typeof statusColors] || statusColors.neutral
           }`}
         >
@@ -645,24 +664,45 @@ export function renderADF(
         </span>
       );
 
-    case "inlineCard":
-      const url = node.attrs?.url || "#";
-      const title = node.attrs?.title || url;
-      
+    case "inlineCard": {
+      const originalUrl = node.attrs?.url || "#";
+      const cardTitle = node.attrs?.title || originalUrl;
+
+      // Transform Confluence URLs to local viewer URLs
+      let finalUrl = originalUrl;
+      if (options?.confluenceBaseUrl && options?.localBaseUrl) {
+        const transformer = new UrlTransformer({
+          confluenceBaseUrl: options.confluenceBaseUrl,
+          localBaseUrl: options.localBaseUrl,
+        });
+        finalUrl = transformer.toLocalUrl(originalUrl);
+      }
+
       return (
         <a
           key={key}
-          href={url}
+          href={finalUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 px-3 py-2 text-sm bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors max-w-md"
         >
-          <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          <svg
+            className="w-4 h-4 text-blue-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
           </svg>
-          <span className="text-blue-800 truncate">{title}</span>
+          <span className="text-blue-800 truncate">{cardTitle}</span>
         </a>
       );
+    }
 
     case "date":
       const timestamp = node.attrs?.timestamp;

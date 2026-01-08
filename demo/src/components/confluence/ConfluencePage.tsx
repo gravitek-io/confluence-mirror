@@ -1,15 +1,23 @@
-import { ConfluenceClient, ConfluenceChildPage, processADFWithMedia, processADFWithTOC } from 'confluence-mirror-core';
+import {
+  ConfluenceClient,
+  ConfluenceChildPage,
+  processADFWithMedia,
+  processADFWithTOC,
+  processADFWithLinks,
+} from 'confluence-mirror-core';
 import { confluenceClient } from '@/lib/confluence';
 import OptimizedADFRenderer from './OptimizedAdfRenderer';
 
 interface ConfluencePageProps {
   pageId?: string;
   url?: string;
+  localBaseUrl?: string;
 }
 
 export default async function ConfluencePage({
   pageId,
-  url
+  url,
+  localBaseUrl,
 }: ConfluencePageProps) {
   // Extract pageId from URL if provided
   let resolvedPageId: string | undefined = pageId;
@@ -108,6 +116,17 @@ export default async function ConfluencePage({
       processedContent = await processADFWithMedia(parsedContent, storageContent, resolvedPageId);
     }
 
+    // Pre-process ADF with link enrichment (server-side)
+    // Extract page titles for Confluence page links
+    const confluenceBaseUrl = process.env.CONFLUENCE_BASE_URL || '';
+    if (confluenceBaseUrl && localBaseUrl) {
+      const { adf: enrichedAdf } = await processADFWithLinks(processedContent, {
+        confluenceClient,
+        confluenceBaseUrl,
+      });
+      processedContent = enrichedAdf;
+    }
+
     // Pre-process ADF with TOC extraction (server-side)
     const { enrichedDocument, tableOfContents } = processADFWithTOC(processedContent);
 
@@ -121,7 +140,6 @@ export default async function ConfluencePage({
     }
 
     // Build the full Confluence URL
-    const confluenceBaseUrl = process.env.CONFLUENCE_BASE_URL || '';
     const webuiPath = page._links.webui;
 
     // Handle both relative paths and full URLs
@@ -173,6 +191,7 @@ export default async function ConfluencePage({
                 pageId={resolvedPageId}
                 tableOfContents={tableOfContents}
                 childPages={childPages}
+                localBaseUrl={localBaseUrl}
               />
             </div>
           </div>
