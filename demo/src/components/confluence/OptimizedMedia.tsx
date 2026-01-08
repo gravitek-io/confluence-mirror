@@ -5,9 +5,10 @@ import Image from "next/image";
 
 interface OptimizedMediaProps {
   url: string;
-  type: "image" | "video" | "unknown";
+  type: "image" | "video" | "unknown" | "file";
   alt: string;
   pageId: string;
+  fileName?: string;
 }
 
 // Optimized media component with pre-processed URLs
@@ -16,6 +17,7 @@ export default function OptimizedMedia({
   type,
   alt,
   pageId,
+  fileName,
 }: OptimizedMediaProps) {
   // Handle special case for showroom page
   if (pageId === "showroom") {
@@ -76,6 +78,53 @@ export default function OptimizedMedia({
           </p>
         </video>
       </div>
+    );
+  }
+
+  // Render file attachment (documents, presentations, etc.)
+  if (type === "file" || type === "unknown") {
+    const getFileIcon = (filename?: string) => {
+      if (!filename) return "📄";
+      const lower = filename.toLowerCase();
+      if (lower.endsWith(".pdf")) return "📕";
+      if (lower.endsWith(".ppt") || lower.endsWith(".pptx")) return "📊";
+      if (lower.endsWith(".doc") || lower.endsWith(".docx")) return "📘";
+      if (lower.endsWith(".xls") || lower.endsWith(".xlsx")) return "📗";
+      if (lower.endsWith(".zip") || lower.endsWith(".rar")) return "📦";
+      return "📄";
+    };
+
+    const displayName = fileName || alt || "File attachment";
+    const icon = getFileIcon(fileName);
+
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-colors max-w-md"
+      >
+        <span className="text-3xl">{icon}</span>
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-medium text-gray-900 truncate">
+            {displayName}
+          </span>
+          <span className="text-xs text-gray-500">Click to open or download</span>
+        </div>
+        <svg
+          className="w-4 h-4 text-gray-400 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+          />
+        </svg>
+      </a>
     );
   }
 

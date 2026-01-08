@@ -2,7 +2,8 @@ import { ADFDocument, ADFNode } from "../types";
 
 interface MediaMapping {
   url: string;
-  type: "image" | "video" | "unknown";
+  type: "image" | "video" | "file" | "unknown";
+  fileName?: string;
 }
 
 // Helper function to determine if a filename is an image or video
@@ -65,7 +66,7 @@ function extractMediaMappings(
     )}`;
 
     // Create mapping with type information
-    let mediaType: "image" | "video" | "unknown" = "unknown";
+    let mediaType: "image" | "video" | "file" | "unknown" = "unknown";
     let indexKey: string;
 
     if (isImageFile(filename)) {
@@ -77,7 +78,7 @@ function extractMediaMappings(
       indexKey = `video-${videoIndex}`;
       videoIndex++;
     } else {
-      mediaType = "unknown";
+      mediaType = "file";
       indexKey = `attachment-${otherIndex}`;
       otherIndex++;
     }
@@ -85,6 +86,7 @@ function extractMediaMappings(
     const mediaMapping: MediaMapping = {
       url: fileUrl,
       type: mediaType,
+      fileName: filename,
     };
 
     // Store with multiple keys for easy lookup
@@ -168,6 +170,7 @@ function enrichMediaNodes(
           // Add our processed data
           processedUrl: foundMapping.url,
           processedType: foundMapping.type,
+          processedFileName: foundMapping.fileName,
         },
       };
       mediaCounter.count++;

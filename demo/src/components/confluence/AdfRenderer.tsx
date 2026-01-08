@@ -439,10 +439,11 @@ export function renderADF(
       const mediaId = node.attrs?.id;
       const mediaType = node.attrs?.type || "file";
       const alt = node.attrs?.alt || "Confluence Media";
-      
+
       // Check if we have pre-processed URL and type
       const processedUrl = node.attrs?.processedUrl;
       const processedType = node.attrs?.processedType;
+      const processedFileName = node.attrs?.processedFileName;
 
       if (mediaType === "file" && processedUrl && processedType && options?.pageId) {
         // Use optimized component with pre-processed data
@@ -453,6 +454,7 @@ export function renderADF(
             type={processedType}
             alt={alt}
             pageId={options.pageId}
+            fileName={processedFileName}
           />
         );
       }
@@ -704,15 +706,38 @@ export function renderADF(
       );
     }
 
-    case "date":
+    case "date": {
       const timestamp = node.attrs?.timestamp;
-      const dateValue = timestamp ? new Date(timestamp).toLocaleDateString('en-US') : "Date";
-      
+      let dateValue = "Date";
+
+      if (timestamp) {
+        try {
+          // Confluence timestamps can be either numbers or string numbers (milliseconds)
+          const timestampNum = typeof timestamp === 'string' ? parseInt(timestamp, 10) : timestamp;
+          const date = new Date(timestampNum);
+
+          // Check if date is valid
+          if (!isNaN(date.getTime())) {
+            dateValue = date.toLocaleDateString('fr-FR', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            });
+          }
+        } catch (error) {
+          console.warn('Failed to parse date:', timestamp, error);
+        }
+      }
+
       return (
-        <span key={key} className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
+        <span
+          key={key}
+          className="inline-flex items-center px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded"
+        >
           📅 {dateValue}
         </span>
       );
+    }
 
     case "mention":
       const mentionText = node.attrs?.text || node.attrs?.displayName || "@mention";
