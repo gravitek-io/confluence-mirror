@@ -49,6 +49,7 @@ export class OAuth2TokenManager {
       grant_type: "client_credentials",
       client_id: this.clientId,
       client_secret: this.clientSecret,
+      audience: "api.atlassian.com",
     });
 
     const response = await fetch(this.tokenEndpoint, {

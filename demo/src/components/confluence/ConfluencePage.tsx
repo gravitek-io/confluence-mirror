@@ -113,6 +113,15 @@ export default async function ConfluencePage({
     // Pre-process ADF with TOC extraction (server-side)
     const { enrichedDocument, tableOfContents } = processADFWithTOC(processedContent);
 
+    // Fetch child pages for the "children" macro
+    let childPages = [];
+    try {
+      childPages = await confluenceClient.getChildPages(resolvedPageId);
+    } catch (error) {
+      console.error('Failed to fetch child pages:', error);
+      // Continue without child pages
+    }
+
     return (
       <div className="bg-white rounded-lg shadow-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
@@ -151,10 +160,11 @@ export default async function ConfluencePage({
         <div className="p-6">
           <div className="max-w-full">
             <div className="confluence-hybrid-content">
-              <OptimizedADFRenderer 
-                document={enrichedDocument} 
-                pageId={resolvedPageId} 
+              <OptimizedADFRenderer
+                document={enrichedDocument}
+                pageId={resolvedPageId}
                 tableOfContents={tableOfContents}
+                childPages={childPages}
               />
             </div>
           </div>

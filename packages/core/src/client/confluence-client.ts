@@ -103,17 +103,17 @@ export class ConfluenceClient {
 
   /**
    * Construct the full API URL based on authentication strategy
-   * - Basic Auth: https://{domain}.atlassian.net/wiki/rest/api/{endpoint}
-   * - OAuth2: https://api.atlassian.com/ex/confluence/{cloudId}/rest/api/{endpoint}
+   * - Basic Auth: https://{domain}.atlassian.net/wiki/rest/api/{endpoint} (API v1)
+   * - OAuth2: https://api.atlassian.com/ex/confluence/{cloudId}/wiki/api/v2/{endpoint} (API v2)
    */
   private async getApiUrl(endpoint: string): Promise<string> {
-    // OAuth2: Use api.atlassian.com with cloudId
+    // OAuth2: Use api.atlassian.com with cloudId and API v2
     if (this.authStrategy instanceof OAuth2Strategy) {
       const cloudId = await this.authStrategy.getCloudId();
-      return `https://api.atlassian.com/ex/confluence/${cloudId}/rest/api/${endpoint}`;
+      return `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/api/v2/${endpoint}`;
     }
 
-    // Basic Auth: Use direct instance URL
+    // Basic Auth: Use direct instance URL with API v1
     if (!this.baseUrl) {
       throw new Error("Base URL is required for Basic Authentication");
     }
@@ -124,12 +124,8 @@ export class ConfluenceClient {
    * Make an authenticated request to the Confluence API
    * Handles token refresh on 401 errors for OAuth2
    */
-  private async makeRequest<T>(endpoint: string): Promise<T> {
-    console.log(`[API] Making request to endpoint: ${endpoint}`);
-    const startTime = Date.now();
-
+  private async makeRequest<T>(endpoint: string, retryCount = 0): Promise<T> {
     const url = await this.getApiUrl(endpoint);
-    console.log(`[API] Full URL: ${url}`);
 
     const authHeaders = await this.authStrategy.getAuthHeaders();
 
@@ -142,21 +138,15 @@ export class ConfluenceClient {
       cache: "no-store", // Always fetch fresh data for confluence pages
     });
 
-    const elapsed = Date.now() - startTime;
-    console.log(`[API] Response received in ${elapsed}ms, status: ${response.status}`);
-
-    // Handle 401 errors with token refresh for OAuth2
-    if (response.status === 401 && this.authStrategy.refreshAuth) {
-      console.log("[API] Got 401, refreshing token and retrying...");
+    // Handle 401 errors with token refresh for OAuth2 (max 1 retry to avoid infinite loops)
+    if (response.status === 401 && this.authStrategy.refreshAuth && retryCount === 0) {
       await this.authStrategy.refreshAuth();
-      // Retry request with new token
-      return this.makeRequest<T>(endpoint);
+      // Retry request with new token (only once)
+      return this.makeRequest<T>(endpoint, retryCount + 1);
     }
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`[API] Request failed: ${response.status}`);
-      console.error(`[API] Error body:`, errorBody);
       throw new ConfluenceApiError(
         `Confluence API Error: ${response.status} - ${errorBody}`,
         response.status
@@ -164,7 +154,6 @@ export class ConfluenceClient {
     }
 
     const data = await response.json();
-    console.log(`[API] Request successful, total time: ${Date.now() - startTime}ms`);
     return data;
   }
 
@@ -172,33 +161,135 @@ export class ConfluenceClient {
     pageId: string,
     includeChildren: boolean = false
   ): Promise<ConfluencePage> {
-    const expandParams = [
-      "body.storage",
-      "body.atlas_doc_format",
-      "version",
-      "space",
-      "history.lastUpdated",
-    ];
+    // OAuth2 uses API v2, Basic Auth uses API v1
+    if (this.authStrategy instanceof OAuth2Strategy) {
+      // API v2 endpoint: /pages/{id}
+      // Note: v2 only accepts ONE body-format at a time
+      // Priority: atlas_doc_format (preferred for rendering)
+      const params = new URLSearchParams({
+        "body-format": "atlas_doc_format",
+      });
 
-    if (includeChildren) {
-      expandParams.push("children.page");
+      if (includeChildren) {
+        params.append("include-children", "true");
+      }
+
+      const pageData = await this.makeRequest<any>(
+        `pages/${pageId}?${params.toString()}`
+      );
+
+      // If atlas_doc_format is not available, fetch storage format as fallback
+      if (!pageData.body?.atlas_doc_format) {
+        const storageParams = new URLSearchParams({
+          "body-format": "storage",
+        });
+        const storagePage = await this.makeRequest<any>(
+          `pages/${pageId}?${storageParams.toString()}`
+        );
+        // Merge storage body into the page
+        if (storagePage.body?.storage) {
+          pageData.body = pageData.body || {};
+          pageData.body.storage = storagePage.body.storage;
+        }
+      }
+
+      // API v2 doesn't return space object, only spaceId
+      // Fetch space details if spaceId is available
+      if (pageData.spaceId && !pageData.space) {
+        try {
+          const spaceData = await this.makeRequest<any>(`spaces/${pageData.spaceId}`);
+          pageData.space = {
+            key: spaceData.key,
+            name: spaceData.name,
+          };
+        } catch (error) {
+          // Fallback: create minimal space object
+          pageData.space = {
+            key: pageData.spaceId,
+            name: pageData.spaceId,
+          };
+        }
+      }
+
+      // Map v2 response to v1 structure expected by the app
+      const page: ConfluencePage = {
+        id: pageData.id,
+        title: pageData.title,
+        body: pageData.body,
+        version: pageData.version || { number: 1 },
+        space: pageData.space || { key: '', name: '' },
+        _links: pageData._links || { webui: '' },
+        children: pageData.children,
+      };
+
+      return page;
+    } else {
+      // API v1 endpoint: /content/{id}
+      const expandParams = [
+        "body.storage",
+        "body.atlas_doc_format",
+        "version",
+        "space",
+        "history.lastUpdated",
+      ];
+
+      if (includeChildren) {
+        expandParams.push("children.page");
+      }
+
+      return this.makeRequest<ConfluencePage>(
+        `content/${pageId}?expand=${expandParams.join(",")}`
+      );
     }
-
-    return this.makeRequest<ConfluencePage>(
-      `content/${pageId}?expand=${expandParams.join(",")}`
-    );
   }
 
   async getChildPages(pageId: string): Promise<ConfluenceChildPage[]> {
-    const response = await this.makeRequest<{
-      results: ConfluenceChildPage[];
-    }>(`content/${pageId}/child/page?expand=version,space`);
+    // OAuth2 uses API v2, Basic Auth uses API v1
+    if (this.authStrategy instanceof OAuth2Strategy) {
+      // API v2 endpoint: /pages/{id}/children
+      const response = await this.makeRequest<{
+        results: any[];
+        _links?: {
+          base?: string;
+        };
+      }>(`pages/${pageId}/children`);
 
-    return response.results;
+      // Map v2 response format to match v1 format expected by the app
+      // Note: v2 child pages don't have _links, we need to construct webui URL manually
+      const baseUrl = response._links?.base || 'https://confluence.atlassian.net/wiki';
+
+      return response.results.map((page) => ({
+        id: page.id,
+        title: page.title,
+        type: page.type || "page",
+        status: page.status || "current",
+        _links: {
+          // Construct webui URL from base URL and page ID
+          // Format: /wiki/spaces/{spaceKey}/pages/{pageId}/{pageTitle}
+          // Since we don't have spaceKey, use simpler format: /wiki/pages/{pageId}
+          webui: `${baseUrl}/pages/${page.id}`,
+        },
+      }));
+    } else {
+      // API v1 endpoint: /content/{id}/child/page
+      const response = await this.makeRequest<{
+        results: ConfluenceChildPage[];
+      }>(`content/${pageId}/child/page?expand=version,space`);
+
+      return response.results;
+    }
   }
 
   async getCurrentUser(): Promise<any> {
-    return this.makeRequest<any>("user/current");
+    // OAuth2 uses API v2, Basic Auth uses API v1
+    if (this.authStrategy instanceof OAuth2Strategy) {
+      // API v2 doesn't have a direct "current user" endpoint
+      // We'll need to use the user endpoint with proper auth context
+      return this.makeRequest<any>("user");
+    } else {
+      // API v1 endpoint
+      return this.makeRequest<any>("user/current");
+    }
   }
 
   /**

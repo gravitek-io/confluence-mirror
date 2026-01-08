@@ -2,11 +2,12 @@ import React from "react";
 import OptimizedMedia from "./OptimizedMedia";
 import OptimizedTOC from "./OptimizedToc";
 
-import { ADFNode, ADFDocument } from 'confluence-mirror-core';
+import { ADFNode, ADFDocument, ConfluenceChildPage } from 'confluence-mirror-core';
 
 interface RenderOptions {
   pageId?: string;
   totalColumnWidth?: number;
+  childPages?: ConfluenceChildPage[];
 }
 
 export function renderADF(
@@ -483,6 +484,78 @@ export function renderADF(
         // TOC is now handled at the page level with pre-processed data
         // Hide the native Confluence TOC placeholder
         return null;
+      }
+
+      // Special case for Confluence children macro
+      if (
+        extensionType === "com.atlassian.confluence.macro.core" &&
+        extensionKey === "children"
+      ) {
+        const childPages = options?.childPages || [];
+
+        if (childPages.length === 0) {
+          return (
+            <div key={key} className="bg-gray-50 border border-gray-200 rounded-lg p-4 my-4">
+              <p className="text-sm text-gray-600">No child pages found.</p>
+            </div>
+          );
+        }
+
+        return (
+          <div key={key} className="my-6">
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700">Child Pages</h3>
+              </div>
+              <ul className="divide-y divide-gray-200">
+                {childPages.map((child) => (
+                  <li key={child.id}>
+                    <a
+                      href={child._links.webui}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <svg
+                            className="h-4 w-4 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          <span className="text-sm font-medium text-gray-900">
+                            {child.title}
+                          </span>
+                        </div>
+                        <svg
+                          className="h-4 w-4 text-gray-400"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </div>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        );
       }
 
       return (

@@ -40,17 +40,41 @@ export class BasicAuthStrategy implements AuthStrategy {
 }
 
 /**
+ * Global cache for OAuth2 token managers
+ * Keyed by clientId to ensure tokens are shared across instances
+ */
+const tokenManagerCache = new Map<string, OAuth2TokenManager>();
+
+/**
+ * Global cache for Cloud ID managers
+ * Keyed by clientId to ensure Cloud IDs are shared across instances
+ */
+const cloudIdManagerCache = new Map<string, CloudIdManager>();
+
+/**
  * OAuth2 authentication strategy for Atlassian service accounts
  * Implements Client Credentials Flow (2LO) with automatic token refresh
  * and Cloud ID detection
+ *
+ * IMPORTANT: Uses singleton pattern to share tokens across all instances
+ * with the same clientId. This prevents 401 loops in Next.js Server Components.
  */
 export class OAuth2Strategy implements AuthStrategy {
   private tokenManager: OAuth2TokenManager;
   private cloudIdManager: CloudIdManager;
 
   constructor(clientId: string, clientSecret: string) {
-    this.tokenManager = new OAuth2TokenManager(clientId, clientSecret);
-    this.cloudIdManager = new CloudIdManager(this.tokenManager);
+    // Reuse existing token manager for this clientId if available
+    if (!tokenManagerCache.has(clientId)) {
+      tokenManagerCache.set(clientId, new OAuth2TokenManager(clientId, clientSecret));
+    }
+    this.tokenManager = tokenManagerCache.get(clientId)!;
+
+    // Reuse existing Cloud ID manager for this clientId if available
+    if (!cloudIdManagerCache.has(clientId)) {
+      cloudIdManagerCache.set(clientId, new CloudIdManager(this.tokenManager));
+    }
+    this.cloudIdManager = cloudIdManagerCache.get(clientId)!;
   }
 
   async getAuthHeaders(): Promise<Record<string, string>> {
