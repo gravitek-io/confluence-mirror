@@ -2,6 +2,12 @@ import Link from "next/link";
 import ShowroomContent from "@/components/demo/ShowroomContent";
 import ShowroomNavigation from "@/components/demo/ShowroomNavigation";
 import { ADFDocument } from "confluence-mirror-core";
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Showroom - Confluence Mirror',
+  description: 'Showcase of all supported Confluence ADF elements',
+};
 
 export default function ShowroomPage() {
   // Demo ADF document with all supported types

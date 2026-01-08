@@ -75,6 +75,53 @@ Visit [http://localhost:3000](http://localhost:3000) to see the demo.
 
 ---
 
+## 🧪 Testing
+
+The demo includes comprehensive end-to-end tests using Playwright to validate all ADF processors and prevent regressions.
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run with UI (interactive mode)
+npm run test:ui
+
+# Run in headed mode (see browser)
+npm run test:headed
+
+# Run only showroom tests
+npm run test:showroom
+```
+
+### Test Coverage
+
+The test suite validates all major processors:
+- ✅ Text formatting (bold, italic, links, code)
+- ✅ Lists (bullet, ordered)
+- ✅ Tables with headers and cells
+- ✅ **Media processor** (images, captions, URL extraction)
+- ✅ Panels (info, warning, error, success, note)
+- ✅ Code blocks and blockquotes
+- ✅ **TOC processor** (heading anchors, navigation)
+- ✅ Task lists (completed, pending)
+- ✅ Layout columns
+- ✅ Confluence extensions
+- ✅ Special elements (status, dates, mentions, emojis)
+
+### Why These Tests Matter
+
+These tests are critical for:
+1. **API Compatibility**: Ensuring OAuth2 (API v2) and Basic Auth (API v1) both work
+2. **Media Processing**: Validating that Storage format is fetched for media URL extraction
+3. **Regression Detection**: Catching breaking changes in processors early
+4. **Visual Regression**: Ensuring UI consistency across changes
+
+See `tests/README.md` for detailed testing documentation.
+
+---
+
 ## 🚀 Integration in your React App
 
 ### Installation

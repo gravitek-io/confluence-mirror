@@ -165,32 +165,32 @@ export class ConfluenceClient {
     if (this.authStrategy instanceof OAuth2Strategy) {
       // API v2 endpoint: /pages/{id}
       // Note: v2 only accepts ONE body-format at a time
-      // Priority: atlas_doc_format (preferred for rendering)
-      const params = new URLSearchParams({
+      // We need BOTH formats: atlas_doc_format for rendering AND storage for media URLs
+
+      // Fetch BOTH formats in parallel (v2 API limitation: only one format per request)
+      // We need atlas_doc_format for rendering AND storage for media URLs extraction
+      const adfParams = new URLSearchParams({
         "body-format": "atlas_doc_format",
       });
 
       if (includeChildren) {
-        params.append("include-children", "true");
+        adfParams.append("include-children", "true");
       }
 
-      const pageData = await this.makeRequest<any>(
-        `pages/${pageId}?${params.toString()}`
-      );
+      const storageParams = new URLSearchParams({
+        "body-format": "storage",
+      });
 
-      // If atlas_doc_format is not available, fetch storage format as fallback
-      if (!pageData.body?.atlas_doc_format) {
-        const storageParams = new URLSearchParams({
-          "body-format": "storage",
-        });
-        const storagePage = await this.makeRequest<any>(
-          `pages/${pageId}?${storageParams.toString()}`
-        );
-        // Merge storage body into the page
-        if (storagePage.body?.storage) {
-          pageData.body = pageData.body || {};
-          pageData.body.storage = storagePage.body.storage;
-        }
+      // Fetch both formats in parallel for better performance
+      const [pageData, storagePage] = await Promise.all([
+        this.makeRequest<any>(`pages/${pageId}?${adfParams.toString()}`),
+        this.makeRequest<any>(`pages/${pageId}?${storageParams.toString()}`),
+      ]);
+
+      // Merge storage body into the page data
+      if (storagePage.body?.storage) {
+        pageData.body = pageData.body || {};
+        pageData.body.storage = storagePage.body.storage;
       }
 
       // API v2 doesn't return space object, only spaceId
