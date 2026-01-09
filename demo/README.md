@@ -6,36 +6,98 @@ Transform your Confluence pages into beautiful React components! This project de
 
 ### 🔧 Configuration
 
-Before running the demo, you need to configure your Confluence API access.
+Before running the demo, you need to configure your Confluence API access. The demo supports **two authentication methods**.
 
-#### Environment Variables
+#### Authentication Methods
+
+The demo automatically detects which authentication method to use based on the environment variables you provide:
+
+1. **OAuth2** (recommended) - Uses Atlassian service accounts
+2. **Basic Auth** (legacy) - Uses email + API token
+
+**Priority**: OAuth2 is used if configured, otherwise falls back to Basic Auth.
+
+---
+
+#### Option 1: OAuth2 Authentication (Recommended)
+
+OAuth2 is the recommended method for production use. It's more secure and designed for server-to-server communication.
+
+**Setup Steps:**
+
+1. Go to [Atlassian Admin](https://admin.atlassian.com)
+2. Navigate to **Directory** > **Service accounts**
+3. Create a new service account or select an existing one
+4. Click **Manage** on the service account
+5. Go to the **API keys** tab
+6. Click **Create API key** and select **OAuth 2.0 (3LO)**
+7. Configure the following scopes (all required):
+   - `read:page:confluence`
+   - `read:attachment:confluence`
+   - `read:user:confluence`
+   - `read:label:confluence`
+   - `read:space:confluence`
+   - `read:embed:confluence`
+8. Copy the generated **Client ID** and **Client Secret**
+9. **Important**: Grant the service account access to your Confluence spaces
+   - In Confluence: **Space Settings** > **Permissions** > Add the service account
+
+**Environment Variables:**
 
 Create a `.env.local` file in the demo directory:
 
 ```env
-# Your Confluence instance
+# OAuth2 Authentication (Recommended)
+CONFLUENCE_OAUTH_CLIENT_ID=your_oauth_client_id_here
+CONFLUENCE_OAUTH_CLIENT_SECRET=your_oauth_client_secret_here
+```
+
+**Benefits:**
+- ✅ More secure (short-lived tokens, auto-refresh)
+- ✅ Designed for automation
+- ✅ Fine-grained permissions via scopes
+- ✅ Automatic Cloud ID detection (no manual config)
+
+---
+
+#### Option 2: Basic Authentication (Legacy)
+
+Basic Auth uses your personal Atlassian account. Simpler setup but less secure.
+
+**Setup Steps:**
+
+1. Go to [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens)
+2. Click **Create API token**
+3. Name it "Confluence Mirror Demo"
+4. Copy the generated token
+
+**Environment Variables:**
+
+Create a `.env.local` file in the demo directory:
+
+```env
+# Basic Authentication (Legacy)
 CONFLUENCE_BASE_URL=https://your-domain.atlassian.net
-
-# Your Atlassian account email
 CONFLUENCE_EMAIL=your.email@domain.com
-
-# Confluence API token (generate from Atlassian Account Settings)
 CONFLUENCE_API_KEY=your_api_token_here
 ```
 
-#### Confluence API Setup
+**Benefits:**
+- ✅ Simpler setup (no service account needed)
+- ✅ Good for development and testing
+- ✅ Uses your personal account permissions
 
-1. **Generate API Token**:
+---
 
-   - Go to [Atlassian Account Settings](https://id.atlassian.com/manage-profile/security/api-tokens)
-   - Click "Create API token"
-   - Name it "Confluence Mirror Demo"
-   - Copy the generated token
+#### Test Your Configuration
 
-2. **Test Connection**:
-   - Start the demo app
-   - Enter a valid Confluence page URL
-   - If it loads, your configuration is correct!
+1. Start the demo app (see Quick Start below)
+2. Enter a valid Confluence page URL
+3. If the page loads correctly, your authentication is working!
+
+**Troubleshooting:**
+- OAuth2 issues: See `demo/OAUTH2_TROUBLESHOOTING.md`
+- Basic Auth issues: Verify your email and API token are correct
 
 ### 🚀 Quick Start
 
