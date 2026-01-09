@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ConfluenceClient } from "confluence-mirror-core";
+import { ConfluenceClient } from "@gravitek/confluence-mirror-core";
 
 interface ConfluenceFormProps {
   initialPageId?: string;

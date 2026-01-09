@@ -2,7 +2,7 @@ import React from "react";
 import OptimizedMedia from "./OptimizedMedia";
 import OptimizedTOC from "./OptimizedToc";
 
-import { ADFNode, ADFDocument, ConfluenceChildPage, TocItem, UrlTransformer } from 'confluence-mirror-core';
+import { ADFNode, ADFDocument, ConfluenceChildPage, TocItem, UrlTransformer } from '@gravitek/confluence-mirror-core';
 
 interface RenderOptions {
   pageId?: string;

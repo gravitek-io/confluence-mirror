@@ -1,7 +1,7 @@
 import Link from "next/link";
 import ShowroomContent from "@/components/demo/ShowroomContent";
 import ShowroomNavigation from "@/components/demo/ShowroomNavigation";
-import { ADFDocument } from "confluence-mirror-core";
+import { ADFDocument } from "@gravitek/confluence-mirror-core";
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {

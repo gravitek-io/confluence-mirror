@@ -32,7 +32,7 @@ export default function HowToPage() {
               Install the core package that handles Confluence API integration:
             </p>
             <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-              {`npm install confluence-mirror-core`}
+              {`npm install @gravitek/confluence-mirror-core`}
             </pre>
           </div>
         </section>
@@ -88,7 +88,7 @@ module.exports = {
             </p>
             <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
               {`// src/lib/confluence.ts
-import { ConfluenceClient } from "confluence-mirror-core";
+import { ConfluenceClient } from "@gravitek/confluence-mirror-core";
 
 // Automatic authentication detection:
 // - OAuth2 if CONFLUENCE_OAUTH_CLIENT_ID and CONFLUENCE_OAUTH_CLIENT_SECRET are set

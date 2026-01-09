@@ -1,4 +1,4 @@
-import { ConfluenceClient } from "confluence-mirror-core";
+import { ConfluenceClient } from "@gravitek/confluence-mirror-core";
 import React from "react";
 import ConfluencePage from "./ConfluencePage";
 import NavigationTreeServer from "./NavigationTreeServer";

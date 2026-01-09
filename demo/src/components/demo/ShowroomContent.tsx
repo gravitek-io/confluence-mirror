@@ -2,7 +2,7 @@ import {
   ADFDocument,
   processADFWithTOC,
   processADFWithMedia,
-} from "confluence-mirror-core";
+} from "@gravitek/confluence-mirror-core";
 import OptimizedADFRenderer from "@/components/confluence/OptimizedAdfRenderer";
 
 interface ShowroomContentProps {

@@ -1,4 +1,4 @@
-import { ConfluenceClient } from "confluence-mirror-core";
+import { ConfluenceClient } from "@gravitek/confluence-mirror-core";
 
 /**
  * Create and configure the Confluence client with automatic authentication detection

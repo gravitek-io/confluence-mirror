@@ -1,5 +1,5 @@
 import React from "react";
-import { ConfluenceChildPage } from "confluence-mirror-core";
+import { ConfluenceChildPage } from "@gravitek/confluence-mirror-core";
 import { confluenceClient } from "@/lib/confluence";
 
 // Type pour un item de navigation server-side

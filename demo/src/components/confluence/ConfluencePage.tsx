@@ -4,7 +4,7 @@ import {
   processADFWithMedia,
   processADFWithTOC,
   processADFWithLinks,
-} from 'confluence-mirror-core';
+} from '@gravitek/confluence-mirror-core';
 import { confluenceClient } from '@/lib/confluence';
 import OptimizedADFRenderer from './OptimizedAdfRenderer';
 

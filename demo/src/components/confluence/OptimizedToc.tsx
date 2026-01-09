@@ -1,5 +1,5 @@
 import React from "react";
-import { TocItem } from "confluence-mirror-core";
+import { TocItem } from "@gravitek/confluence-mirror-core";
 
 interface OptimizedTOCProps {
   items: TocItem[];
