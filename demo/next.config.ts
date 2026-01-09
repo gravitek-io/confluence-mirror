@@ -2,6 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Turbopack is now the default bundler in Next.js 16
+  turbopack: {},
   images: {
     remotePatterns: [
       // NextJS <Image> component needs to whitelist domains for src={}
@@ -22,19 +24,6 @@ const nextConfig: NextConfig = {
         hostname: "logos-world.net",
       },
     ],
-  },
-  webpack: (config, { webpack, isServer }) => {
-    // Ignore MongoDB's optional dependencies to prevent build warnings
-    if (isServer) {
-      config.plugins.push(
-        new webpack.IgnorePlugin({
-          resourceRegExp:
-            /^(kerberos|@mongodb-js\/zstd|@aws-sdk\/credential-providers|gcp-metadata|snappy|socks|aws4|mongodb-client-encryption)$/,
-        })
-      );
-    }
-
-    return config;
   },
 };
 
