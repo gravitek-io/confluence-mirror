@@ -25,6 +25,36 @@ npm run dev
 
 Visit http://localhost:3000 to see the demo in action.
 
+> **Note**: Before running the demo, configure authentication. See [Authentication Setup](#-authentication) below.
+
+## 🔐 Authentication
+
+The project supports **two authentication methods** with Atlassian Confluence:
+
+### OAuth2 (Recommended)
+- Uses Atlassian service accounts
+- More secure with short-lived tokens
+- Auto-refreshing authentication
+- Automatic Cloud ID detection
+
+```env
+CONFLUENCE_OAUTH_CLIENT_ID=your_client_id
+CONFLUENCE_OAUTH_CLIENT_SECRET=your_client_secret
+```
+
+### Basic Auth (Legacy)
+- Uses personal Atlassian account
+- Email + API token
+- Simpler setup for development
+
+```env
+CONFLUENCE_BASE_URL=https://your-domain.atlassian.net
+CONFLUENCE_EMAIL=your.email@domain.com
+CONFLUENCE_API_KEY=your_api_token
+```
+
+**Detailed setup instructions**: See [demo/README.md](./demo/README.md#-configuration)
+
 ## 🎯 Integration Approaches
 
 ### Option 1: Install Package + Copy Components
