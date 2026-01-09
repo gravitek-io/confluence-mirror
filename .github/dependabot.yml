@@ -13,7 +13,7 @@ updates:
       timezone: "Europe/Paris"
     open-pull-requests-limit: 10
     reviewers:
-      - "YOUR_GITHUB_USERNAME"  # Replace with your GitHub username
+      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "automated"
@@ -43,7 +43,7 @@ updates:
       timezone: "Europe/Paris"
     open-pull-requests-limit: 10
     reviewers:
-      - "YOUR_GITHUB_USERNAME"  # Replace with your GitHub username
+      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "demo"
@@ -96,7 +96,7 @@ updates:
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
     reviewers:
-      - "YOUR_GITHUB_USERNAME"  # Replace with your GitHub username
+      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "core"
@@ -127,7 +127,7 @@ updates:
       timezone: "Europe/Paris"
     open-pull-requests-limit: 3
     reviewers:
-      - "YOUR_GITHUB_USERNAME"  # Replace with your GitHub username
+      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "github-actions"
@@ -135,10 +135,9 @@ updates:
     commit-message:
       prefix: "chore(ci)"
       include: "scope"
-
 # Notes:
 # ------
-# 1. Replace "YOUR_GITHUB_USERNAME" with your actual GitHub username
+# 1. Replace "tperelle" with your actual GitHub username
 # 2. For email notifications via tech@gravitek.io, configure GitHub notifications
 #    in your organization/repository settings
 # 3. Grouping strategies:
