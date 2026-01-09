@@ -12,8 +12,6 @@ updates:
       time: "09:00"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 10
-    reviewers:
-      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "automated"
@@ -42,8 +40,6 @@ updates:
       time: "09:00"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 10
-    reviewers:
-      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "demo"
@@ -95,8 +91,6 @@ updates:
       time: "09:00"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 5
-    reviewers:
-      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "core"
@@ -126,8 +120,6 @@ updates:
       time: "09:00"
       timezone: "Europe/Paris"
     open-pull-requests-limit: 3
-    reviewers:
-      - "tperelle" # Replace with your GitHub username
     labels:
       - "dependencies"
       - "github-actions"
@@ -137,11 +129,14 @@ updates:
       include: "scope"
 # Notes:
 # ------
-# 1. Replace "tperelle" with your actual GitHub username
-# 2. For email notifications via tech@gravitek.io, configure GitHub notifications
+# 1. For PR reviewers: Configure CODEOWNERS file or branch protection rules
+#    (reviewers property is not supported in dependabot.yml for version updates)
+# 2. For email notifications via tech@gravitek.io: Configure GitHub notifications
 #    in your organization/repository settings
 # 3. Grouping strategies:
 #    - Groups related updates (e.g., Next.js ecosystem) to reduce PR noise
 #    - Separates major updates (individual PRs) from minor/patch (grouped PRs)
 # 4. Schedule: Weekly updates on Monday mornings (Europe/Paris timezone)
 # 5. All PRs are auto-labeled for easy filtering
+# 6. To assign reviewers automatically, create a .github/CODEOWNERS file:
+#    * @tperelle

@@ -1,0 +1,24 @@
+# CODEOWNERS file for automatic PR reviewer assignment
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+# These owners will be requested for review when someone opens a pull request
+*                          @tperelle
+
+# Core package
+/packages/core/**          @tperelle
+
+# Demo application
+/demo/**                   @tperelle
+
+# Documentation
+*.md                       @tperelle
+/docs/**                   @tperelle
+
+# Configuration files
+/.github/**                @tperelle
+*.json                     @tperelle
+*.yml                      @tperelle
+*.yaml                     @tperelle
+
+# Dependabot PRs will automatically request review from @tperelle
