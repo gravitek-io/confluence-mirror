@@ -14,16 +14,16 @@
   },
   "dependencies": {
     "@gravitek/confluence-mirror-core": "file:../packages/core",
-    "@tailwindcss/postcss": "^4.1.11",
+    "@tailwindcss/postcss": "^4.1.18",
     "next": "^16.1.1",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "tailwindcss": "^4.1.11"
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.57.0",
-    "@types/node": "^20",
+    "@types/node": "^22.19.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
