@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Automatic table of contents generation
 - Media processing and optimization
 - Clean Tailwind CSS styling (no CSS overrides)
-- Server-side rendering with Next.js 15
+- Server-side rendering with Next.js 16
 
 ## Project Architecture
 
@@ -34,7 +34,7 @@ This is a workspace-based project with the following structure:
 ### Key Dependencies
 
 - Core package: Pure TypeScript with no dependencies
-- Demo: Next.js 15, React 19, Tailwind CSS v4, confluence-mirror-core
+- Demo: Next.js 16, React 19, Tailwind CSS v4, confluence-mirror-core
 
 ## Development Commands
 

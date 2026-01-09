@@ -15,7 +15,7 @@
   "dependencies": {
     "@gravitek/confluence-mirror-core": "file:../packages/core",
     "@tailwindcss/postcss": "^4.1.11",
-    "next": "15.4.10",
+    "next": "^16.1.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "tailwindcss": "^4.1.11"
@@ -27,7 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.4.7",
+    "eslint-config-next": "^16.1.1",
     "typescript": "^5"
   }
 }
