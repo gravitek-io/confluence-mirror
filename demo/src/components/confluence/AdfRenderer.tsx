@@ -543,10 +543,20 @@ export function renderADF(
                     ? webuiPath
                     : `${confluenceBaseUrl}/wiki${webuiPath.startsWith('/') ? '' : '/'}${webuiPath}`;
 
+                  // Transform Confluence URL to local viewer URL
+                  let finalUrl = fullConfluenceUrl;
+                  if (options?.localBaseUrl && confluenceBaseUrl) {
+                    const transformer = new UrlTransformer({
+                      confluenceBaseUrl: confluenceBaseUrl,
+                      localBaseUrl: options.localBaseUrl,
+                    });
+                    finalUrl = transformer.toLocalUrl(fullConfluenceUrl);
+                  }
+
                   return (
                     <li key={child.id}>
                       <a
-                        href={fullConfluenceUrl}
+                        href={finalUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="block px-4 py-3 hover:bg-gray-50 transition-colors"
