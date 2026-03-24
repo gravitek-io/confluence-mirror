@@ -29,7 +29,11 @@
   },
   "homepage": "https://github.com/Gravitek-io/confluence-mirror.git",
   "overrides": {
-    "eslint": "$eslint"
+    "eslint": "^9",
+    "flatted": "^3.4.2",
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^9.0.7"
+    }
   },
   "devDependencies": {
     "eslint": "^9",
