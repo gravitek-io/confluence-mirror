@@ -12,7 +12,7 @@
     "build": "npm run build --workspaces",
     "build:core": "npm run build --workspace=packages/core",
     "build:demo": "npm run build --workspace=demo",
-    "lint": "npm run lint --workspaces"
+    "lint": "npm run lint --workspaces --if-present"
   },
   "keywords": [
     "confluence",
@@ -28,7 +28,11 @@
     "url": "https://github.com/Gravitek-io/confluence-mirror.git"
   },
   "homepage": "https://github.com/Gravitek-io/confluence-mirror.git",
+  "overrides": {
+    "eslint": "$eslint"
+  },
   "devDependencies": {
+    "eslint": "^9",
     "typescript": "^5",
     "@types/node": "^25"
   }

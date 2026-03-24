@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
@@ -21,12 +21,10 @@
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.58.2",
     "@types/node": "^25.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^10",
     "eslint-config-next": "^16.1.6",
     "typescript": "^5"
   }
