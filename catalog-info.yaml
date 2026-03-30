@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: confluence-mirror
+  description: Transform Confluence pages into React components for modern web integration
+  annotations:
+    github.com/project-slug: gravitek-io/confluence-mirror
+  tags:
+    - typescript
+    - documentation
+    - idp
+    - platform-engineering
+spec:
+  type: library
+  lifecycle: production
+  owner: group:tech
