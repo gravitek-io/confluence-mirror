@@ -28,7 +28,7 @@
   },
   "homepage": "https://github.com/Gravitek-io/confluence-mirror.git",
   "devDependencies": {
-    "typescript": "^6",
+    "typescript": "^7",
     "@types/node": "^26"
   },
   "dependencies": {},
