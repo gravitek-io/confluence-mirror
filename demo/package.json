@@ -14,10 +14,10 @@
   },
   "dependencies": {
     "@gravitek/confluence-mirror-core": "file:../packages/core",
-    "@tailwindcss/postcss": "^4.3.0",
-    "next": "^16.2.6",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
+    "@tailwindcss/postcss": "^4.3.3",
+    "next": "^16.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
