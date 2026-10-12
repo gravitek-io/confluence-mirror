@@ -21,11 +21,11 @@
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "@playwright/test": "^1.63.0",
-    "@types/node": "^26.6.4",
+    "@playwright/test": "^1.64.0",
+    "@types/node": "^26.6.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint-config-next": "^16.3.8",
+    "eslint-config-next": "^16.4.0",
     "typescript": "^6"
   }
 }
