@@ -4,11 +4,11 @@ import ConfluenceMirrorServer from "@/components/confluence/ConfluenceMirrorServ
 import ConfluenceFormDemo from "@/components/demo/ConfluenceFormDemo";
 
 interface HomeProps {
-  searchParams: Promise<{ pageId?: string; url?: string }>;
+  searchParams: Promise<{ pageId?: string; url?: string; folderId?: string }>;
 }
 
 export default async function Home({ searchParams }: HomeProps) {
-  const { pageId, url } = await searchParams;
+  const { pageId, url, folderId } = await searchParams;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -38,6 +38,20 @@ export default async function Home({ searchParams }: HomeProps) {
         </div>
 
         <ConfluenceFormDemo initialPageId={pageId} />
+
+        {/* Folder links are routed to `?folderId=` by the core package. The demo
+            does not render folders: it only explains it. The space key is not
+            known here, so no safe Confluence link can be built. */}
+        {folderId && (
+          <div className="mt-8 max-w-3xl mx-auto bg-amber-50 border border-amber-200 rounded-lg p-6 text-amber-900">
+            <p className="font-medium">Folders are not rendered by this demo.</p>
+            <p className="mt-1 text-sm">
+              The link points to a Confluence folder. Open it directly in
+              Confluence, or see the package documentation to list a
+              folder&apos;s content with <code>getDirectChildren()</code>.
+            </p>
+          </div>
+        )}
 
         {(pageId || url) && (
           <div className="mt-8 max-w-7xl mx-auto">
