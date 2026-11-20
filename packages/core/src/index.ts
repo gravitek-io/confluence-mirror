@@ -3,6 +3,16 @@
 // Client and error handling
 export { ConfluenceClient, ConfluenceApiError } from "./client/confluence-client";
 
+// Content hierarchy types
+export type {
+  ConfluenceContentType,
+  ConfluenceTreeItem,
+  ConfluenceAncestor,
+  ConfluenceContentSummary,
+  ConfluenceFolder,
+  DirectChildrenResult,
+} from "./client/content-types";
+
 // Authentication strategies
 export {
   BasicAuthStrategy,

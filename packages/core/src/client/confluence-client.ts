@@ -6,6 +6,30 @@ import {
   extractContentFromUrl,
   type ConfluenceContentRef,
 } from "../utils/url-parser";
+import type {
+  ConfluenceAncestor,
+  ConfluenceContentSummary,
+  ConfluenceContentType,
+  ConfluenceFolder,
+  ConfluenceTreeItem,
+  DirectChildrenResult,
+} from "./content-types";
+
+/** Content type -> REST v2 endpoint segment. */
+const V2_SEGMENTS: Record<string, string> = {
+  page: "pages",
+  folder: "folders",
+  whiteboard: "whiteboards",
+  database: "databases",
+  embed: "embeds",
+};
+
+/** Page size requested for direct-children listings (v2 maximum). */
+const CHILDREN_PAGE_SIZE = 250;
+/** Default cap on the number of children returned by `getDirectChildren`. */
+const DEFAULT_MAX_CHILDREN = 1000;
+/** Prefix of v2 paths found in `_links.next`, stripped before re-requesting. */
+const V2_PATH_PREFIX = "/wiki/api/v2/";
 
 export interface ConfluencePage {
   id: string;
@@ -127,11 +151,34 @@ export class ConfluenceClient {
   }
 
   /**
+   * Construct a REST v2 URL whatever the authentication strategy:
+   * - Basic Auth: {baseUrl}/wiki/api/v2/{endpoint}
+   * - OAuth2: https://api.atlassian.com/ex/confluence/{cloudId}/wiki/api/v2/{endpoint}
+   */
+  private async getApiUrlV2(endpoint: string): Promise<string> {
+    if (this.authStrategy instanceof OAuth2Strategy) {
+      return this.getApiUrl(endpoint); // already v2
+    }
+    if (!this.baseUrl) {
+      throw new Error("Base URL is required for Basic Authentication");
+    }
+    return `${this.baseUrl}/wiki/api/v2/${endpoint}`;
+  }
+
+  /**
    * Make an authenticated request to the Confluence API
    * Handles token refresh on 401 errors for OAuth2
+   * @param options.v2 - Force REST v2 (default: v1 in Basic Auth, v2 in OAuth2)
+   * @param options.retryCount - Internal: number of retries already done
    */
-  private async makeRequest<T>(endpoint: string, retryCount = 0): Promise<T> {
-    const url = await this.getApiUrl(endpoint);
+  private async makeRequest<T>(
+    endpoint: string,
+    options: { v2?: boolean; retryCount?: number } = {}
+  ): Promise<T> {
+    const { v2 = false, retryCount = 0 } = options;
+    const url = v2
+      ? await this.getApiUrlV2(endpoint)
+      : await this.getApiUrl(endpoint);
 
     const authHeaders = await this.authStrategy.getAuthHeaders();
 
@@ -148,7 +195,7 @@ export class ConfluenceClient {
     if (response.status === 401 && this.authStrategy.refreshAuth && retryCount === 0) {
       await this.authStrategy.refreshAuth();
       // Retry request with new token (only once)
-      return this.makeRequest<T>(endpoint, retryCount + 1);
+      return this.makeRequest<T>(endpoint, { v2, retryCount: retryCount + 1 });
     }
 
     if (!response.ok) {
@@ -284,6 +331,135 @@ export class ConfluenceClient {
 
       return response.results;
     }
+  }
+
+  /**
+   * Map a content type to its REST v2 endpoint segment.
+   * Throws without any network call for unsupported types.
+   */
+  private v2Segment(type: ConfluenceContentType): string {
+    const segment = V2_SEGMENTS[type];
+    if (!segment) {
+      throw new ConfluenceApiError(`Unsupported content type: ${type}`);
+    }
+    return segment;
+  }
+
+  /**
+   * Read a folder (REST v2). The space is resolved with a second call;
+   * `space` is `null` when that lookup fails, never the space ID.
+   */
+  async getFolder(id: string): Promise<ConfluenceFolder> {
+    const data = await this.makeRequest<any>(`folders/${id}`, { v2: true });
+
+    let space: ConfluenceFolder["space"] = null;
+    if (data.spaceId) {
+      try {
+        const spaceData = await this.makeRequest<any>(`spaces/${data.spaceId}`, {
+          v2: true,
+        });
+        if (spaceData?.key) {
+          space = { key: spaceData.key, name: spaceData.name };
+        }
+      } catch {
+        space = null;
+      }
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      type: "folder",
+      spaceId: data.spaceId,
+      parentId: data.parentId,
+      parentType: data.parentType,
+      status: data.status,
+      space,
+      _links: { webui: data._links?.webui ?? "" },
+    };
+  }
+
+  /**
+   * List the direct children of a page or folder (REST v2), following
+   * cursor pagination. Stops once `maxItems` (default 1000) items are
+   * collected and reports it with `truncated`.
+   */
+  async getDirectChildren(
+    parentType: ConfluenceContentType,
+    id: string,
+    options: { maxItems?: number } = {}
+  ): Promise<DirectChildrenResult> {
+    const maxItems = options.maxItems ?? DEFAULT_MAX_CHILDREN;
+    const segment = this.v2Segment(parentType);
+
+    type Page = {
+      results: ConfluenceTreeItem[];
+      _links?: { next?: string };
+    };
+
+    const items: ConfluenceTreeItem[] = [];
+    let endpoint: string | null = `${segment}/${id}/direct-children?limit=${CHILDREN_PAGE_SIZE}`;
+
+    while (endpoint) {
+      const page: Page = await this.makeRequest<Page>(endpoint, { v2: true });
+      for (const child of page.results ?? []) {
+        items.push({
+          id: child.id,
+          title: child.title,
+          type: child.type,
+          status: child.status,
+          childPosition: child.childPosition,
+        });
+      }
+
+      // `_links.next` is a full v2 path already carrying cursor and limit.
+      const next = page._links?.next;
+      if (items.length >= maxItems) {
+        // Truncated only if something remains beyond the cap.
+        return {
+          items: items.slice(0, maxItems),
+          truncated: items.length > maxItems || Boolean(next),
+        };
+      }
+      endpoint = next ? next.replace(V2_PATH_PREFIX, "") : null;
+    }
+
+    return { items, truncated: false };
+  }
+
+  /**
+   * List the ancestors of a content item (REST v2), root first as returned.
+   */
+  async getAncestors(
+    type: ConfluenceContentType,
+    id: string
+  ): Promise<ConfluenceAncestor[]> {
+    const segment = this.v2Segment(type);
+    const data = await this.makeRequest<{ results: ConfluenceAncestor[] }>(
+      `${segment}/${id}/ancestors`,
+      { v2: true }
+    );
+    return (data.results ?? []).map((a) => ({ id: a.id, type: a.type }));
+  }
+
+  /**
+   * Read the metadata of a content item without its body (REST v2).
+   * `type` is the one asked for, not read from the response body.
+   */
+  async getContentSummary(
+    type: ConfluenceContentType,
+    id: string
+  ): Promise<ConfluenceContentSummary> {
+    const segment = this.v2Segment(type);
+    const data = await this.makeRequest<any>(`${segment}/${id}`, { v2: true });
+    return {
+      id: data.id,
+      title: data.title,
+      type,
+      spaceId: data.spaceId,
+      parentId: data.parentId,
+      parentType: data.parentType,
+    };
   }
 
   async getCurrentUser(): Promise<any> {
