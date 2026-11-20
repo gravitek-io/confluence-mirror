@@ -28,6 +28,8 @@ const V2_SEGMENTS: Record<string, string> = {
 const CHILDREN_PAGE_SIZE = 250;
 /** Default cap on the number of children returned by `getDirectChildren`. */
 const DEFAULT_MAX_CHILDREN = 1000;
+/** Confluence content IDs are numeric; anything else is refused before a request. */
+const NUMERIC_ID = /^\d+$/;
 /** Prefix of v2 paths found in `_links.next`, stripped before re-requesting. */
 const V2_PATH_PREFIX = "/wiki/api/v2/";
 
@@ -214,6 +216,7 @@ export class ConfluenceClient {
     pageId: string,
     includeChildren: boolean = false
   ): Promise<ConfluencePage> {
+    this.assertNumericId(pageId, "page ID");
     // OAuth2 uses API v2, Basic Auth uses API v1
     if (this.authStrategy instanceof OAuth2Strategy) {
       // API v2 endpoint: /pages/{id}
@@ -297,6 +300,7 @@ export class ConfluenceClient {
   }
 
   async getChildPages(pageId: string): Promise<ConfluenceChildPage[]> {
+    this.assertNumericId(pageId, "page ID");
     // OAuth2 uses API v2, Basic Auth uses API v1
     if (this.authStrategy instanceof OAuth2Strategy) {
       // API v2 endpoint: /pages/{id}/children
@@ -338,11 +342,22 @@ export class ConfluenceClient {
    * Throws without any network call for unsupported types.
    */
   private v2Segment(type: ConfluenceContentType): string {
-    const segment = V2_SEGMENTS[type];
-    if (!segment) {
-      throw new ConfluenceApiError(`Unsupported content type: ${type}`);
+    // `hasOwn` keeps inherited keys (`constructor`, `__proto__`...) out.
+    if (typeof type !== "string" || !Object.hasOwn(V2_SEGMENTS, type)) {
+      throw new ConfluenceApiError(`Unsupported content type: ${String(type)}`);
     }
-    return segment;
+    return V2_SEGMENTS[type];
+  }
+
+  /**
+   * Ensure an ID is purely numeric before it is interpolated into a URL path.
+   * Without this, `..` segments would be resolved by the URL parser and could
+   * reach other endpoints on the credentialed host. No request is sent.
+   */
+  private assertNumericId(id: string, label: string): void {
+    if (typeof id !== "string" || !NUMERIC_ID.test(id)) {
+      throw new ConfluenceApiError(`Invalid ${label}: must be a numeric ID`);
+    }
   }
 
   /**
@@ -350,6 +365,7 @@ export class ConfluenceClient {
    * `space` is `null` when that lookup fails, never the space ID.
    */
   async getFolder(id: string): Promise<ConfluenceFolder> {
+    this.assertNumericId(id, "folder ID");
     const data = await this.makeRequest<any>(`folders/${id}`, { v2: true });
 
     let space: ConfluenceFolder["space"] = null;
@@ -390,7 +406,15 @@ export class ConfluenceClient {
     options: { maxItems?: number } = {}
   ): Promise<DirectChildrenResult> {
     const maxItems = options.maxItems ?? DEFAULT_MAX_CHILDREN;
+    if (!Number.isInteger(maxItems) || maxItems < 1) {
+      throw new ConfluenceApiError("Invalid maxItems: must be an integer >= 1");
+    }
     const segment = this.v2Segment(parentType);
+    this.assertNumericId(id, "content ID");
+    // Safety net against a server returning `next` forever (e.g. with empty
+    // pages): enough requests to fill `maxItems` with full pages, plus one.
+    const maxRequests = Math.ceil(maxItems / CHILDREN_PAGE_SIZE) + 1;
+    let requests = 0;
 
     type Page = {
       results: ConfluenceTreeItem[];
@@ -401,6 +425,10 @@ export class ConfluenceClient {
     let endpoint: string | null = `${segment}/${id}/direct-children?limit=${CHILDREN_PAGE_SIZE}`;
 
     while (endpoint) {
+      if (requests >= maxRequests) {
+        return { items: items.slice(0, maxItems), truncated: true };
+      }
+      requests++;
       const page: Page = await this.makeRequest<Page>(endpoint, { v2: true });
       for (const child of page.results ?? []) {
         items.push({
@@ -421,7 +449,14 @@ export class ConfluenceClient {
           truncated: items.length > maxItems || Boolean(next),
         };
       }
-      endpoint = next ? next.replace(V2_PATH_PREFIX, "") : null;
+      if (!next) {
+        endpoint = null;
+      } else if (next.startsWith(V2_PATH_PREFIX)) {
+        endpoint = next.slice(V2_PATH_PREFIX.length);
+      } else {
+        // Unexpected link shape: never follow it, report what we have.
+        return { items, truncated: true };
+      }
     }
 
     return { items, truncated: false };
@@ -435,6 +470,7 @@ export class ConfluenceClient {
     id: string
   ): Promise<ConfluenceAncestor[]> {
     const segment = this.v2Segment(type);
+    this.assertNumericId(id, "content ID");
     const data = await this.makeRequest<{ results: ConfluenceAncestor[] }>(
       `${segment}/${id}/ancestors`,
       { v2: true }
@@ -451,6 +487,7 @@ export class ConfluenceClient {
     id: string
   ): Promise<ConfluenceContentSummary> {
     const segment = this.v2Segment(type);
+    this.assertNumericId(id, "content ID");
     const data = await this.makeRequest<any>(`${segment}/${id}`, { v2: true });
     return {
       id: data.id,

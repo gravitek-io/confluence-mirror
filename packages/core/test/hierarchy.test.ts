@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { ConfluenceClient, OAuth2Strategy } from "../src";
+import { ConfluenceClient, ConfluenceApiError, OAuth2Strategy } from "../src";
 
 const BASE = "https://example.atlassian.net";
 const V2 = `${BASE}/wiki/api/v2`;
@@ -129,5 +129,83 @@ describe("hierarchy reads (REST v2)", () => {
   it("rejects unknown content types without calling fetch", async () => {
     await expect(client.getAncestors("blogpost", "1")).rejects.toThrow("Unsupported content type");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("input validation (no request sent)", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let client: ConfluenceClient;
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    client = ConfluenceClient.createWithBasicAuth(BASE, "a@b.c", "k");
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const badIds = ["..", "1/../2", "abc", "", "12 3", "../../admin"];
+  const methods: Array<[string, (id: string) => Promise<unknown>]> = [
+    ["getPage", (id) => client.getPage(id)],
+    ["getChildPages", (id) => client.getChildPages(id)],
+    ["getFolder", (id) => client.getFolder(id)],
+    ["getDirectChildren", (id) => client.getDirectChildren("folder", id)],
+    ["getAncestors", (id) => client.getAncestors("page", id)],
+    ["getContentSummary", (id) => client.getContentSummary("folder", id)],
+  ];
+
+  for (const [name, call] of methods) {
+    it(`${name} rejects non-numeric IDs without fetching`, async () => {
+      for (const id of badIds) {
+        await expect(call(id)).rejects.toBeInstanceOf(ConfluenceApiError);
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  }
+
+  it("rejects prototype keys as content types", async () => {
+    for (const type of ["constructor", "toString", "__proto__"]) {
+      await expect(
+        client.getAncestors(type as never, "1001")
+      ).rejects.toBeInstanceOf(ConfluenceApiError);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid maxItems", async () => {
+    for (const maxItems of [0, -1, Number.NaN, 1.5, Infinity]) {
+      await expect(
+        client.getDirectChildren("folder", "1001", { maxItems })
+      ).rejects.toBeInstanceOf(ConfluenceApiError);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("stops on an endless `next` with empty pages", async () => {
+    fetchMock.mockImplementation(async () =>
+      jsonResponse({
+        results: [],
+        _links: { next: "/wiki/api/v2/folders/1001/direct-children?cursor=x" },
+      })
+    );
+    const res = await client.getDirectChildren("folder", "1001", { maxItems: 10 });
+    expect(res.truncated).toBe(true);
+    expect(res.items).toEqual([]);
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(2);
+  });
+
+  it("stops when `next` is not a v2 path", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        results: items(2),
+        _links: { next: "https://evil.example/steal" },
+      })
+    );
+    const res = await client.getDirectChildren("folder", "1001");
+    expect(res.truncated).toBe(true);
+    expect(res.items).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
