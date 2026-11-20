@@ -1,5 +1,37 @@
 import type { AuthStrategy } from "./auth-strategies";
 import { BasicAuthStrategy, OAuth2Strategy } from "./auth-strategies";
+import {
+  extractPageIdFromUrl,
+  extractFolderIdFromUrl,
+  extractContentFromUrl,
+  type ConfluenceContentRef,
+} from "../utils/url-parser";
+import type {
+  ConfluenceAncestor,
+  ConfluenceContentSummary,
+  ConfluenceContentType,
+  ConfluenceFolder,
+  ConfluenceTreeItem,
+  DirectChildrenResult,
+} from "./content-types";
+
+/** Content type -> REST v2 endpoint segment. */
+const V2_SEGMENTS: Record<string, string> = {
+  page: "pages",
+  folder: "folders",
+  whiteboard: "whiteboards",
+  database: "databases",
+  embed: "embeds",
+};
+
+/** Page size requested for direct-children listings (v2 maximum). */
+const CHILDREN_PAGE_SIZE = 250;
+/** Default cap on the number of children returned by `getDirectChildren`. */
+const DEFAULT_MAX_CHILDREN = 1000;
+/** Confluence content IDs are numeric; anything else is refused before a request. */
+const NUMERIC_ID = /^\d+$/;
+/** Prefix of v2 paths found in `_links.next`, stripped before re-requesting. */
+const V2_PATH_PREFIX = "/wiki/api/v2/";
 
 export interface ConfluencePage {
   id: string;
@@ -121,11 +153,34 @@ export class ConfluenceClient {
   }
 
   /**
+   * Construct a REST v2 URL whatever the authentication strategy:
+   * - Basic Auth: {baseUrl}/wiki/api/v2/{endpoint}
+   * - OAuth2: https://api.atlassian.com/ex/confluence/{cloudId}/wiki/api/v2/{endpoint}
+   */
+  private async getApiUrlV2(endpoint: string): Promise<string> {
+    if (this.authStrategy instanceof OAuth2Strategy) {
+      return this.getApiUrl(endpoint); // already v2
+    }
+    if (!this.baseUrl) {
+      throw new Error("Base URL is required for Basic Authentication");
+    }
+    return `${this.baseUrl}/wiki/api/v2/${endpoint}`;
+  }
+
+  /**
    * Make an authenticated request to the Confluence API
    * Handles token refresh on 401 errors for OAuth2
+   * @param options.v2 - Force REST v2 (default: v1 in Basic Auth, v2 in OAuth2)
+   * @param options.retryCount - Internal: number of retries already done
    */
-  private async makeRequest<T>(endpoint: string, retryCount = 0): Promise<T> {
-    const url = await this.getApiUrl(endpoint);
+  private async makeRequest<T>(
+    endpoint: string,
+    options: { v2?: boolean; retryCount?: number } = {}
+  ): Promise<T> {
+    const { v2 = false, retryCount = 0 } = options;
+    const url = v2
+      ? await this.getApiUrlV2(endpoint)
+      : await this.getApiUrl(endpoint);
 
     const authHeaders = await this.authStrategy.getAuthHeaders();
 
@@ -142,7 +197,7 @@ export class ConfluenceClient {
     if (response.status === 401 && this.authStrategy.refreshAuth && retryCount === 0) {
       await this.authStrategy.refreshAuth();
       // Retry request with new token (only once)
-      return this.makeRequest<T>(endpoint, retryCount + 1);
+      return this.makeRequest<T>(endpoint, { v2, retryCount: retryCount + 1 });
     }
 
     if (!response.ok) {
@@ -161,6 +216,7 @@ export class ConfluenceClient {
     pageId: string,
     includeChildren: boolean = false
   ): Promise<ConfluencePage> {
+    this.assertNumericId(pageId, "page ID");
     // OAuth2 uses API v2, Basic Auth uses API v1
     if (this.authStrategy instanceof OAuth2Strategy) {
       // API v2 endpoint: /pages/{id}
@@ -244,6 +300,7 @@ export class ConfluenceClient {
   }
 
   async getChildPages(pageId: string): Promise<ConfluenceChildPage[]> {
+    this.assertNumericId(pageId, "page ID");
     // OAuth2 uses API v2, Basic Auth uses API v1
     if (this.authStrategy instanceof OAuth2Strategy) {
       // API v2 endpoint: /pages/{id}/children
@@ -280,6 +337,168 @@ export class ConfluenceClient {
     }
   }
 
+  /**
+   * Map a content type to its REST v2 endpoint segment.
+   * Throws without any network call for unsupported types.
+   */
+  private v2Segment(type: ConfluenceContentType): string {
+    // `hasOwnProperty` keeps inherited keys (`constructor`, `__proto__`...) out.
+    if (typeof type !== "string" || !Object.prototype.hasOwnProperty.call(V2_SEGMENTS, type)) {
+      throw new ConfluenceApiError(`Unsupported content type: ${String(type)}`);
+    }
+    return V2_SEGMENTS[type];
+  }
+
+  /**
+   * Ensure an ID is purely numeric before it is interpolated into a URL path.
+   * Without this, `..` segments would be resolved by the URL parser and could
+   * reach other endpoints on the credentialed host. No request is sent.
+   */
+  private assertNumericId(id: string, label: string): void {
+    if (typeof id !== "string" || !NUMERIC_ID.test(id)) {
+      throw new ConfluenceApiError(`Invalid ${label}: must be a numeric ID`);
+    }
+  }
+
+  /**
+   * Read a folder (REST v2). The space is resolved with a second call;
+   * `space` is `null` when that lookup fails, never the space ID.
+   */
+  async getFolder(id: string): Promise<ConfluenceFolder> {
+    this.assertNumericId(id, "folder ID");
+    const data = await this.makeRequest<any>(`folders/${id}`, { v2: true });
+
+    let space: ConfluenceFolder["space"] = null;
+    if (data.spaceId) {
+      try {
+        const spaceData = await this.makeRequest<any>(`spaces/${data.spaceId}`, {
+          v2: true,
+        });
+        if (spaceData?.key) {
+          space = { key: spaceData.key, name: spaceData.name };
+        }
+      } catch {
+        space = null;
+      }
+    }
+
+    return {
+      id: data.id,
+      title: data.title,
+      type: "folder",
+      spaceId: data.spaceId,
+      parentId: data.parentId,
+      parentType: data.parentType,
+      status: data.status,
+      space,
+      _links: { webui: data._links?.webui ?? "" },
+    };
+  }
+
+  /**
+   * List the direct children of a page or folder (REST v2), following
+   * cursor pagination. Stops once `maxItems` (default 1000) items are
+   * collected and reports it with `truncated`.
+   */
+  async getDirectChildren(
+    parentType: ConfluenceContentType,
+    id: string,
+    options: { maxItems?: number } = {}
+  ): Promise<DirectChildrenResult> {
+    const maxItems = options.maxItems ?? DEFAULT_MAX_CHILDREN;
+    if (!Number.isInteger(maxItems) || maxItems < 1) {
+      throw new ConfluenceApiError("Invalid maxItems: must be an integer >= 1");
+    }
+    const segment = this.v2Segment(parentType);
+    this.assertNumericId(id, "content ID");
+    // Safety net against a server returning `next` forever (e.g. with empty
+    // pages): enough requests to fill `maxItems` with full pages, plus one.
+    const maxRequests = Math.ceil(maxItems / CHILDREN_PAGE_SIZE) + 1;
+    let requests = 0;
+
+    type Page = {
+      results: ConfluenceTreeItem[];
+      _links?: { next?: string };
+    };
+
+    const items: ConfluenceTreeItem[] = [];
+    let endpoint: string | null = `${segment}/${id}/direct-children?limit=${CHILDREN_PAGE_SIZE}`;
+
+    while (endpoint) {
+      if (requests >= maxRequests) {
+        return { items: items.slice(0, maxItems), truncated: true };
+      }
+      requests++;
+      const page: Page = await this.makeRequest<Page>(endpoint, { v2: true });
+      for (const child of page.results ?? []) {
+        items.push({
+          id: child.id,
+          title: child.title,
+          type: child.type,
+          status: child.status,
+          childPosition: child.childPosition,
+        });
+      }
+
+      // `_links.next` is a full v2 path already carrying cursor and limit.
+      const next = page._links?.next;
+      if (items.length >= maxItems) {
+        // Truncated only if something remains beyond the cap.
+        return {
+          items: items.slice(0, maxItems),
+          truncated: items.length > maxItems || Boolean(next),
+        };
+      }
+      if (!next) {
+        endpoint = null;
+      } else if (next.startsWith(V2_PATH_PREFIX)) {
+        endpoint = next.slice(V2_PATH_PREFIX.length);
+      } else {
+        // Unexpected link shape: never follow it, report what we have.
+        return { items, truncated: true };
+      }
+    }
+
+    return { items, truncated: false };
+  }
+
+  /**
+   * List the ancestors of a content item (REST v2), root first as returned.
+   */
+  async getAncestors(
+    type: ConfluenceContentType,
+    id: string
+  ): Promise<ConfluenceAncestor[]> {
+    const segment = this.v2Segment(type);
+    this.assertNumericId(id, "content ID");
+    const data = await this.makeRequest<{ results: ConfluenceAncestor[] }>(
+      `${segment}/${id}/ancestors`,
+      { v2: true }
+    );
+    return (data.results ?? []).map((a) => ({ id: a.id, type: a.type }));
+  }
+
+  /**
+   * Read the metadata of a content item without its body (REST v2).
+   * `type` is the one asked for, not read from the response body.
+   */
+  async getContentSummary(
+    type: ConfluenceContentType,
+    id: string
+  ): Promise<ConfluenceContentSummary> {
+    const segment = this.v2Segment(type);
+    this.assertNumericId(id, "content ID");
+    const data = await this.makeRequest<any>(`${segment}/${id}`, { v2: true });
+    return {
+      id: data.id,
+      title: data.title,
+      type,
+      spaceId: data.spaceId,
+      parentId: data.parentId,
+      parentType: data.parentType,
+    };
+  }
+
   async getCurrentUser(): Promise<any> {
     // OAuth2 uses API v2, Basic Auth uses API v1
     if (this.authStrategy instanceof OAuth2Strategy) {
@@ -293,31 +512,24 @@ export class ConfluenceClient {
   }
 
   /**
-   * Extract page ID from Confluence URL
-   * Supports formats like:
-   * - https://your-domain.atlassian.net/wiki/spaces/SPACE/pages/123456/Page+Title
-   * - https://your-domain.atlassian.net/wiki/pages/viewpage.action?pageId=123456
-   * - https://your-domain.atlassian.net/wiki/spaces/SPACE/overview?homepageId=123456
+   * Extract page ID from Confluence URL (see `extractPageIdFromUrl`).
    */
   static extractPageIdFromUrl(url: string): string | null {
-    // Pattern 1: /pages/123456/title format
-    const match1 = url.match(/\/pages\/(\d+)(?:\/|$)/);
-    if (match1) {
-      return match1[1];
-    }
+    return extractPageIdFromUrl(url);
+  }
 
-    // Pattern 2: pageId=123456 query parameter
-    const match2 = url.match(/[?&]pageId=(\d+)/);
-    if (match2) {
-      return match2[1];
-    }
+  /**
+   * Extract folder ID from Confluence URL (see `extractFolderIdFromUrl`).
+   */
+  static extractFolderIdFromUrl(url: string): string | null {
+    return extractFolderIdFromUrl(url);
+  }
 
-    // Pattern 3: homepageId=123456 query parameter (space overview pages)
-    const match3 = url.match(/[?&]homepageId=(\d+)/);
-    if (match3) {
-      return match3[1];
-    }
-
-    return null;
+  /**
+   * Identify the page or folder a Confluence URL points to
+   * (see `extractContentFromUrl`).
+   */
+  static extractContentFromUrl(url: string): ConfluenceContentRef | null {
+    return extractContentFromUrl(url);
   }
 }

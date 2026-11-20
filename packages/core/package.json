@@ -1,16 +1,19 @@
 {
   "name": "@gravitek/confluence-mirror-core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Core logic for Confluence page rendering - API client, ADF processing, media handling. Unofficial, not affiliated with Atlassian.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "dev": "tsc --watch",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "vitest run"
   },
   "keywords": [
     "confluence",
@@ -29,10 +32,14 @@
   "homepage": "https://github.com/Gravitek-io/confluence-mirror.git",
   "devDependencies": {
     "typescript": "^6",
-    "@types/node": "^26"
+    "@types/node": "^22",
+    "vitest": "^5"
   },
   "dependencies": {},
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

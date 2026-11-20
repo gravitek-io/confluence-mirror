@@ -1,11 +1,18 @@
 import type { ADFNode } from "../types";
-import { ConfluenceClient } from "../client/confluence-client";
+import type { ConfluenceClient } from "../client/confluence-client";
+import { extractContentFromUrl } from "../utils/url-parser";
 
 /**
- * Link enrichment result containing metadata about a Confluence page link
+ * Link enrichment result containing metadata about a Confluence page or folder link
  */
 export interface EnrichedLinkData {
+  /**
+   * ID of the linked content. The name is kept for backward compatibility:
+   * it holds a folder ID when `contentType` is "folder".
+   */
   pageId: string;
+  /** Kind of content the link points to */
+  contentType: "page" | "folder";
   title: string;
   originalUrl: string;
 }
@@ -19,13 +26,13 @@ export interface LinkProcessorOptions {
 }
 
 /**
- * Process ADF to enrich Confluence page links with page titles
+ * Process ADF to enrich Confluence page and folder links with titles
  *
  * This processor:
  * 1. Recursively traverses the ADF tree
  * 2. Finds all links (marks and inlineCard nodes) pointing to Confluence pages
- * 3. Extracts page IDs from URLs
- * 4. Fetches page titles from Confluence API
+ * 3. Extracts content type and ID (page or folder) from URLs
+ * 4. Fetches titles from Confluence API (pages via getPage, folders via getContentSummary)
  * 5. Enriches link nodes with page metadata
  *
  * @param adf - The ADF document to process
@@ -116,18 +123,17 @@ function isConfluenceUrl(url: string, confluenceBaseUrl: string): boolean {
       return false;
     }
 
-    // Check if we can extract a page ID
-    const pageId = ConfluenceClient.extractPageIdFromUrl(url);
-    return pageId !== null;
+    // Check if we can extract a page or folder reference
+    return extractContentFromUrl(url) !== null;
   } catch {
     return false;
   }
 }
 
 /**
- * Fetch page titles for a set of Confluence URLs
+ * Fetch titles for a set of Confluence page and folder URLs
  *
- * @param urls - Set of Confluence page URLs
+ * @param urls - Set of Confluence page or folder URLs
  * @param client - Confluence API client
  * @returns Array of enriched link data
  */
@@ -137,35 +143,40 @@ async function fetchPageTitles(
 ): Promise<EnrichedLinkData[]> {
   const results: EnrichedLinkData[] = [];
 
-  // Group URLs by page ID to avoid duplicate API calls
-  const pageIdMap = new Map<string, string[]>();
+  // Group URLs by content (type + ID) to avoid duplicate API calls
+  const contentMap = new Map<
+    string,
+    { type: "page" | "folder"; id: string; urls: string[] }
+  >();
   for (const url of urls) {
-    const pageId = ConfluenceClient.extractPageIdFromUrl(url);
-    if (pageId) {
-      if (!pageIdMap.has(pageId)) {
-        pageIdMap.set(pageId, []);
-      }
-      pageIdMap.get(pageId)!.push(url);
+    const ref = extractContentFromUrl(url);
+    if (!ref) continue;
+    const key = `${ref.type}:${ref.id}`;
+    const entry = contentMap.get(key);
+    if (entry) {
+      entry.urls.push(url);
+    } else {
+      contentMap.set(key, { ...ref, urls: [url] });
     }
   }
 
-  // Fetch page data for each unique page ID
+  // Fetch the title of each unique content item
   await Promise.all(
-    Array.from(pageIdMap.entries()).map(async ([pageId, pageUrls]) => {
+    Array.from(contentMap.values()).map(async ({ type, id, urls: contentUrls }) => {
       try {
-        const page = await client.getPage(pageId, false);
+        // Pages keep their historical lookup; folders use the lightweight summary
+        const title =
+          type === "page"
+            ? (await client.getPage(id, false)).title
+            : (await client.getContentSummary("folder", id)).title;
 
-        // Add enriched data for all URLs pointing to this page
-        for (const url of pageUrls) {
-          results.push({
-            pageId,
-            title: page.title,
-            originalUrl: url,
-          });
+        // Add enriched data for all URLs pointing to this content
+        for (const url of contentUrls) {
+          results.push({ pageId: id, contentType: type, title, originalUrl: url });
         }
       } catch (error) {
-        // If we can't fetch the page, skip enrichment for these URLs
-        console.warn(`Failed to fetch page ${pageId}:`, error);
+        // If we can't fetch the content, skip enrichment for these URLs
+        console.warn(`Failed to fetch ${type} ${id}:`, error);
       }
     })
   );
@@ -195,6 +206,7 @@ function enrichAdfWithLinkData(
         ...clonedNode.attrs,
         title: enrichedData.title,
         pageId: enrichedData.pageId,
+        contentType: enrichedData.contentType,
       };
     }
   }
@@ -211,6 +223,7 @@ function enrichAdfWithLinkData(
               ...mark.attrs,
               title: enrichedData.title,
               pageId: enrichedData.pageId,
+              contentType: enrichedData.contentType,
             },
           };
         }

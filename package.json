@@ -12,7 +12,8 @@
     "build": "npm run build --workspaces",
     "build:core": "npm run build --workspace=packages/core",
     "build:demo": "npm run build --workspace=demo",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspace=packages/core"
   },
   "keywords": [
     "confluence",
@@ -32,12 +33,12 @@
     "eslint": "^9",
     "flatted": "^3.4.2",
     "@typescript-eslint/typescript-estree": {
-      "minimatch": "^9.0.7"
+      "minimatch": "^11.0.1"
     }
   },
   "devDependencies": {
     "eslint": "^9",
     "typescript": "^6",
-    "@types/node": "^26"
+    "@types/node": "^22"
   }
 }

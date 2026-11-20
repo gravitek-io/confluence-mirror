@@ -1,4 +1,4 @@
-import { ConfluenceClient } from "../client/confluence-client";
+import { extractContentFromUrl } from "./url-parser";
 
 /**
  * Transform Confluence URLs to local viewer URLs
@@ -44,7 +44,7 @@ export class UrlTransformer {
    *
    * Returns true if:
    * 1. The URL points to the configured Confluence instance
-   * 2. A page ID can be extracted from the URL
+   * 2. A page or folder ID can be extracted from the URL
    *
    * @param url - URL to check
    * @returns true if URL should be transformed
@@ -56,9 +56,8 @@ export class UrlTransformer {
         return false;
       }
 
-      // Check if we can extract a page ID
-      const pageId = ConfluenceClient.extractPageIdFromUrl(url);
-      return pageId !== null;
+      // Check if we can extract a page or folder ID
+      return extractContentFromUrl(url) !== null;
     } catch {
       return false;
     }
@@ -67,23 +66,24 @@ export class UrlTransformer {
   /**
    * Transform a Confluence URL to a local viewer URL
    *
-   * Extracts the page ID from the Confluence URL and creates a local URL
-   * with the page ID as a query parameter.
+   * Extracts the page or folder ID from the Confluence URL and creates a
+   * local URL with it as a query parameter (`pageId` or `folderId`).
    *
-   * @param confluenceUrl - Confluence page URL to transform
-   * @returns Local viewer URL with pageId query parameter, or original URL if transformation fails
+   * @param confluenceUrl - Confluence page or folder URL to transform
+   * @returns Local viewer URL, or original URL if transformation fails
    */
   toLocalUrl(confluenceUrl: string): string {
     if (!this.shouldTransform(confluenceUrl)) {
       return confluenceUrl;
     }
 
-    const pageId = ConfluenceClient.extractPageIdFromUrl(confluenceUrl);
-    if (!pageId) {
+    const content = extractContentFromUrl(confluenceUrl);
+    if (!content) {
       return confluenceUrl;
     }
 
-    return `${this.localBaseUrl}/?pageId=${pageId}`;
+    const param = content.type === "folder" ? "folderId" : "pageId";
+    return `${this.localBaseUrl}/?${param}=${content.id}`;
   }
 
   /**
