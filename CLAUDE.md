@@ -21,11 +21,12 @@ This is a workspace-based project with the following structure:
 
 ### Current Structure (Post-Refactoring)
 
-- **packages/core** (`confluence-mirror-core`): Published npm package with framework-agnostic core logic
+- **packages/core** (`@gravitek/confluence-mirror-core`): Published npm package with framework-agnostic core logic
   - Confluence API client (`ConfluenceClient`)
   - ADF processors (media, TOC, text extraction)
   - TypeScript types and interfaces
-  - **Status**: Published on npm as `confluence-mirror-core@0.1.2`
+  - **Status**: `@gravitek/confluence-mirror-core@0.3.0` (published on npm by the maintainer after review)
+  - Tests: Vitest in `packages/core/test/` (`npm test`); CI on GitHub Actions (Node 22 and 26: install, build, test, audit)
 - **demo/**: Complete implementation example with reusable React components
   - All React components for ADF rendering
   - Integration examples and how-to guides
@@ -33,7 +34,7 @@ This is a workspace-based project with the following structure:
 
 ### Key Dependencies
 
-- Core package: Pure TypeScript with no dependencies
+- Core package: Pure TypeScript with no runtime dependencies, Node 22+
 - Demo: Next.js 16, React 19, Tailwind CSS v4, confluence-mirror-core
 
 ## Development Commands
@@ -48,6 +49,7 @@ npm run build              # Build all packages and demo
 npm run build:core         # Build core package only
 npm run build:demo         # Build demo app only
 npm run lint               # Lint all workspaces
+npm test                   # Run the core unit tests (Vitest)
 
 # Package-specific commands
 cd packages/core && npm run dev    # Watch build core package
@@ -62,7 +64,7 @@ cd packages/core && npm publish    # Publish core package to npm
 ### Confluence API Integration
 
 - **Authentication**: Basic auth using email + API key
-- **API Version**: Confluence REST API v1 (standard endpoints)
+- **API Version**: Confluence REST API v1 for pages; REST v2 for folders and hierarchy (`getFolder`, `getDirectChildren`, `getAncestors`, `getContentSummary`)
 - **Supported Formats**: ADF (Atlas Document Format) and Storage format
 - **URL Extraction**: Supports multiple Confluence URL patterns
 

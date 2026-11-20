@@ -2,15 +2,18 @@
 
 Core logic for Confluence page rendering - framework agnostic.
 
+Requires Node.js 22 or later.
+
 ## Installation
 
 ```bash
-npm install confluence-mirror-core
+npm install @gravitek/confluence-mirror-core
 ```
 
 ## Features
 
 - ✅ **Confluence REST API Client** - Authenticate and fetch pages
+- ✅ **Folder Browsing** - Read folders, direct children, ancestors and content summaries (REST v2)
 - ✅ **ADF Processing** - Parse Atlas Document Format
 - ✅ **Media Processing** - Extract and rewrite media URLs
 - ✅ **TOC Extraction** - Generate table of contents from headings
@@ -24,12 +27,12 @@ import {
   ConfluenceClient, 
   processADFWithMedia, 
   processADFWithTOC 
-} from 'confluence-mirror-core';
+} from '@gravitek/confluence-mirror-core';
 
 // Initialize client
-const client = new ConfluenceClient(
+const client = ConfluenceClient.createWithBasicAuth(
   "https://your-domain.atlassian.net",
-  "your-email@domain.com", 
+  "your-email@domain.com",
   "your-api-key"
 );
 
@@ -53,15 +56,85 @@ const { enrichedDocument, tableOfContents } = processADFWithTOC(processedContent
 
 ```typescript
 class ConfluenceClient {
-  constructor(baseUrl: string, email: string, apiKey: string)
-  
+  constructor(authStrategy: AuthStrategy, baseUrl?: string)
+  static createWithBasicAuth(baseUrl: string, email: string, apiKey: string): ConfluenceClient
+  static createWithOAuth2(clientId: string, clientSecret: string): ConfluenceClient
+
+
   async getPage(pageId: string, includeChildren?: boolean): Promise<ConfluencePage>
   async getChildPages(pageId: string): Promise<ConfluenceChildPage[]>
   async getCurrentUser(): Promise<any>
+
+  // Folders and hierarchy (REST v2, since 0.3.0)
+  async getFolder(id: string): Promise<ConfluenceFolder>
+  async getDirectChildren(
+    parentType: ConfluenceContentType,
+    id: string,
+    options?: { maxItems?: number }
+  ): Promise<DirectChildrenResult>
+  async getAncestors(type: ConfluenceContentType, id: string): Promise<ConfluenceAncestor[]>
+  async getContentSummary(type: ConfluenceContentType, id: string): Promise<ConfluenceContentSummary>
   
   static extractPageIdFromUrl(url: string): string | null
 }
 ```
+
+### Folders and hierarchy
+
+Since 0.3.0, the client reads folders and the page tree through the Confluence REST v2 API. In Basic Auth mode these methods use REST v2 too (`/wiki/api/v2`).
+
+```typescript
+// A folder, with its space ({ key, name }, or null if the space lookup failed)
+const folder = await client.getFolder("1001");
+console.log(folder.title, folder.space?.key);
+
+// Direct children of a page or folder, in tree order (default cap: 1000 items)
+const { items, truncated } = await client.getDirectChildren("folder", "1001", {
+  maxItems: 200,
+});
+for (const item of items) console.log(item.type, item.id, item.title);
+
+// Ancestors, root first
+const ancestors = await client.getAncestors("page", "2002");
+
+// Metadata without the body (title, spaceId, parentId, parentType)
+const summary = await client.getContentSummary("folder", "1001");
+```
+
+Supported content types for these reads are `page` and `folder`; other kinds are rejected with a `ConfluenceApiError` before any request is sent.
+
+### Folder URLs
+
+URL helpers recognise folder URLs such as `https://example.atlassian.net/wiki/spaces/DOC/folder/1001/Guides`:
+
+```typescript
+import {
+  extractFolderIdFromUrl,
+  extractContentFromUrl,
+  UrlTransformer,
+} from '@gravitek/confluence-mirror-core';
+
+extractFolderIdFromUrl("https://example.atlassian.net/wiki/spaces/DOC/folder/1001/Guides"); // "1001"
+extractContentFromUrl("https://example.atlassian.net/wiki/spaces/DOC/pages/2002/Intro");   // { type: "page", id: "2002" }
+
+// Folder links are routed to `?folderId=`, page links to `?pageId=`
+const transformer = new UrlTransformer({
+  confluenceBaseUrl: "https://example.atlassian.net",
+  localBaseUrl: "https://docs.example.com",
+});
+transformer.toLocalUrl("https://example.atlassian.net/wiki/spaces/DOC/folder/1001/Guides");
+// "https://docs.example.com/?folderId=1001"
+```
+
+`processADFWithLinks()` also enriches folder links with the folder title. `EnrichedLinkData` gains a `contentType` field (`"page" | "folder"`); `pageId` holds the folder ID for folders.
+
+### Required OAuth2 scopes
+
+For a service account (OAuth2), grant these scopes to read folders and the hierarchy, next to the scopes you already use to read pages:
+
+- `read:folder:confluence`
+- `read:hierarchical-content:confluence`
+- `read:content.metadata:confluence`
 
 ### Processing Functions
 
@@ -116,7 +189,7 @@ interface TocItem {
 ## Error Handling
 
 ```typescript
-import { ConfluenceApiError } from 'confluence-mirror-core';
+import { ConfluenceApiError } from '@gravitek/confluence-mirror-core';
 
 try {
   const page = await client.getPage("invalid-id");
