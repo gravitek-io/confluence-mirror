@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "test": "vitest run"

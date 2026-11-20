@@ -1,0 +1,15 @@
+Confluence Mirror
+Copyright 2025 Gravitek
+
+This product includes software developed at Gravitek.
+
+This is an unofficial library, not affiliated with Atlassian.
+
+This software contains code derived from various open-source projects:
+- Next.js (MIT License)
+- React (MIT License)
+- Tailwind CSS (MIT License)
+- TypeScript (Apache-2.0 License)
+
+For more information about these dependencies, see the package.json files
+in the respective packages.
