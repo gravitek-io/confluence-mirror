@@ -1,5 +1,11 @@
 import type { AuthStrategy } from "./auth-strategies";
 import { BasicAuthStrategy, OAuth2Strategy } from "./auth-strategies";
+import {
+  extractPageIdFromUrl,
+  extractFolderIdFromUrl,
+  extractContentFromUrl,
+  type ConfluenceContentRef,
+} from "../utils/url-parser";
 
 export interface ConfluencePage {
   id: string;
@@ -293,31 +299,24 @@ export class ConfluenceClient {
   }
 
   /**
-   * Extract page ID from Confluence URL
-   * Supports formats like:
-   * - https://your-domain.atlassian.net/wiki/spaces/SPACE/pages/123456/Page+Title
-   * - https://your-domain.atlassian.net/wiki/pages/viewpage.action?pageId=123456
-   * - https://your-domain.atlassian.net/wiki/spaces/SPACE/overview?homepageId=123456
+   * Extract page ID from Confluence URL (see `extractPageIdFromUrl`).
    */
   static extractPageIdFromUrl(url: string): string | null {
-    // Pattern 1: /pages/123456/title format
-    const match1 = url.match(/\/pages\/(\d+)(?:\/|$)/);
-    if (match1) {
-      return match1[1];
-    }
+    return extractPageIdFromUrl(url);
+  }
 
-    // Pattern 2: pageId=123456 query parameter
-    const match2 = url.match(/[?&]pageId=(\d+)/);
-    if (match2) {
-      return match2[1];
-    }
+  /**
+   * Extract folder ID from Confluence URL (see `extractFolderIdFromUrl`).
+   */
+  static extractFolderIdFromUrl(url: string): string | null {
+    return extractFolderIdFromUrl(url);
+  }
 
-    // Pattern 3: homepageId=123456 query parameter (space overview pages)
-    const match3 = url.match(/[?&]homepageId=(\d+)/);
-    if (match3) {
-      return match3[1];
-    }
-
-    return null;
+  /**
+   * Identify the page or folder a Confluence URL points to
+   * (see `extractContentFromUrl`).
+   */
+  static extractContentFromUrl(url: string): ConfluenceContentRef | null {
+    return extractContentFromUrl(url);
   }
 }

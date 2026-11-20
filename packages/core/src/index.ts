@@ -26,6 +26,12 @@ export {
 
 // Utilities
 export { UrlTransformer } from "./utils/url-transformer";
+export {
+  extractPageIdFromUrl,
+  extractFolderIdFromUrl,
+  extractContentFromUrl,
+  type ConfluenceContentRef,
+} from "./utils/url-parser";
 
 // Types
 export * from "./types";
