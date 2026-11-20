@@ -1,3 +1,8 @@
+/* eslint-disable react-hooks/error-boundaries --
+ * This is an async Server Component: the try/catch only guards data loading
+ * and returns an inline error panel. No child component is rendered inside
+ * the try block that a React error boundary could have caught instead.
+ */
 import {
   ConfluenceClient,
   ConfluenceChildPage,
