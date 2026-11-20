@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Core package
-- Released `@gravitek/confluence-mirror-core` 0.3.0: folder browsing, Node 22+, security fixes. See [packages/core/CHANGELOG.md](./packages/core/CHANGELOG.md)
+- `@gravitek/confluence-mirror-core` 0.3.0 (prepared, to be published): folder browsing, Node 22+, security fixes. See [packages/core/CHANGELOG.md](./packages/core/CHANGELOG.md)
 
 ### Changed
 - Upgraded Next.js from 15.4.10 to 16.1.1

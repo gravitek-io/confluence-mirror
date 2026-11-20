@@ -38,6 +38,9 @@ OAuth2 is the recommended method for production use. It's more secure and design
    - `read:label:confluence`
    - `read:space:confluence`
    - `read:embed:confluence`
+   - `read:folder:confluence` (folders, since core 0.3.0)
+   - `read:hierarchical-content:confluence` (children, since core 0.3.0)
+   - `read:content.metadata:confluence` (ancestors, since core 0.3.0)
 8. Copy the generated **Client ID** and **Client Secret**
 9. **Important**: Grant the service account access to your Confluence spaces
    - In Confluence: **Space Settings** > **Permissions** > Add the service account
@@ -189,7 +192,7 @@ See `tests/README.md` for detailed testing documentation.
 ### Installation
 
 ```bash
-npm install confluence-mirror-core
+npm install @gravitek/confluence-mirror-core
 ```
 
 ### Copy Components
@@ -411,7 +414,7 @@ import { OptimizedADFRenderer, OptimizedTOC } from "@/components/confluence";
 
 ## 📚 Learn More
 
-- [confluence-mirror-core Documentation](../packages/core/README.md)
+- [@gravitek/confluence-mirror-core Documentation](../packages/core/README.md)
 - [Confluence REST API Docs](https://developer.atlassian.com/cloud/confluence/rest/)
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)

@@ -10,7 +10,7 @@ Transform your Confluence pages into beautiful React components! This project de
 
 This repository contains:
 
-- **packages/core** - `confluence-mirror-core`: Framework-agnostic Confluence API & ADF processing
+- **packages/core** - `@gravitek/confluence-mirror-core`: Framework-agnostic Confluence API & ADF processing
 - **demo/** - Complete implementation example with reusable React components
 
 ## 🚀 Quick Start
@@ -61,7 +61,7 @@ CONFLUENCE_API_KEY=your_api_token
 
 ```bash
 # Install the published core package
-npm install confluence-mirror-core
+npm install @gravitek/confluence-mirror-core
 
 # Copy reusable components from demo
 cp -r demo/src/components/confluence/ your-project/src/components/
@@ -74,7 +74,7 @@ Fork this repository and customize the demo app for your needs.
 
 ## 📦 Core Package
 
-### confluence-mirror-core
+### @gravitek/confluence-mirror-core
 
 Framework-agnostic core logic for Confluence integration:
 

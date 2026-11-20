@@ -13,13 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Folder and hierarchy reads** on `ConfluenceClient` (REST v2, also in Basic Auth mode): `getFolder()`, `getDirectChildren()` (cursor pagination, `maxItems` cap with a `truncated` flag), `getAncestors()` and `getContentSummary()`
 - **Folder titles in links**: `processADFWithLinks()` enriches folder links; `EnrichedLinkData` gains `contentType` (`"page" | "folder"`)
 - New exported types: `ConfluenceContentType`, `ConfluenceTreeItem`, `ConfluenceAncestor`, `ConfluenceContentSummary`, `ConfluenceFolder`, `DirectChildrenResult`, `ConfluenceContentRef`
-- Required OAuth2 scopes for these reads are documented: `read:folder:confluence`, `read:hierarchical-content:confluence`, `read:content.metadata:confluence`
+- Required OAuth2 scopes for these reads are documented per method: `read:folder:confluence`, `read:hierarchical-content:confluence`, `read:content.metadata:confluence`
 
 ### Changed
 
 - **Node.js 22 or later is required** (`engines`)
 - Added a Vitest test suite and a GitHub Actions CI (Node 22 and 26: install, build, test, audit)
-- Dependencies refreshed (TypeScript 6, `@types/node` 22, Next.js and React in the demo)
+- **Folder links are routed differently**: `UrlTransformer.toLocalUrl()` now turns folder URLs into `<localBaseUrl>/?folderId=<id>` (0.2.0 left them unchanged). Migration: viewers must handle the `folderId` query parameter (for example by rendering the folder with `getFolder()` and `getDirectChildren()`); the demo only shows a notice
+- **`EnrichedLinkData.contentType` is a new required field** (`"page" | "folder"`): hand-built `EnrichedLinkData` objects, such as test mocks, must now set it
+- **Content IDs are validated** (security): `getPage`, `getChildPages` and the new methods only accept numeric IDs (`/^\d+$/`) and throw `ConfluenceApiError` without any request otherwise, so an ID such as `../../x` can no longer reach other paths on the credentialed host
+- `getDirectChildren` validates `maxItems` (integer >= 1), caps the number of requests it makes and stops on an unexpected `_links.next`, reporting `truncated: true`
+- Development dependencies refreshed (`@types/node` 22, Next.js and React in the demo)
 
 ### Security
 

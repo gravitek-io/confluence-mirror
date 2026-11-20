@@ -1,4 +1,4 @@
-# confluence-mirror-core
+# @gravitek/confluence-mirror-core
 
 Core logic for Confluence page rendering - framework agnostic.
 
@@ -74,7 +74,7 @@ class ConfluenceClient {
   ): Promise<DirectChildrenResult>
   async getAncestors(type: ConfluenceContentType, id: string): Promise<ConfluenceAncestor[]>
   async getContentSummary(type: ConfluenceContentType, id: string): Promise<ConfluenceContentSummary>
-  
+
   static extractPageIdFromUrl(url: string): string | null
 }
 ```
@@ -101,7 +101,7 @@ const ancestors = await client.getAncestors("page", "2002");
 const summary = await client.getContentSummary("folder", "1001");
 ```
 
-Supported content types for these reads are `page` and `folder`; other kinds are rejected with a `ConfluenceApiError` before any request is sent.
+The content types accepted by these reads are `page`, `folder`, `whiteboard`, `database` and `embed`. Only `page` and `folder` have been verified against a live Confluence site; any other type is rejected with a `ConfluenceApiError` before a request is sent. Content IDs must be numeric (`/^\d+$/`): any other value is rejected the same way, for every client method that takes an ID.
 
 ### Folder URLs
 
@@ -140,9 +140,11 @@ A service account (OAuth2) needs these granular scopes, all suffixed with `:conf
 | `read:label:confluence` | Page labels |
 | `read:space:confluence` | Resolving the space (key and name) of a page or folder |
 | `read:embed:confluence` | Embedded content |
-| `read:folder:confluence` | Reading folders (`getFolder`), needed since 0.3.0 |
-| `read:hierarchical-content:confluence` | Direct children and ancestors, needed since 0.3.0 |
-| `read:content.metadata:confluence` | Content summaries (`getContentSummary`), needed since 0.3.0 |
+| `read:folder:confluence` | `getFolder`, and `getContentSummary("folder", …)` (needed since 0.3.0) |
+| `read:hierarchical-content:confluence` | `getDirectChildren` for pages and folders (needed since 0.3.0) |
+| `read:content.metadata:confluence` | `getAncestors` for pages and folders (needed since 0.3.0) |
+
+Scopes per method, as listed in Atlassian's REST v2 OpenAPI specification: `getFolder` needs `read:folder` and `read:space`; `getDirectChildren` needs `read:hierarchical-content`; `getAncestors` needs `read:content.metadata`; `getContentSummary` needs `read:page` (page) or `read:folder` (folder).
 
 The service account must also have access to the Confluence spaces it reads.
 

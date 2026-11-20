@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Confluence Mirror** is a demonstration project that shows how to integrate Confluence content into React applications. It consists of a published core package (`confluence-mirror-core`) and a complete implementation example with reusable React components.
+**Confluence Mirror** is a demonstration project that shows how to integrate Confluence content into React applications. It consists of a published core package (`@gravitek/confluence-mirror-core`) and a complete implementation example with reusable React components.
 
 ### Key Features
 
@@ -35,7 +35,7 @@ This is a workspace-based project with the following structure:
 ### Key Dependencies
 
 - Core package: Pure TypeScript with no runtime dependencies, Node 22+
-- Demo: Next.js 16, React 19, Tailwind CSS v4, confluence-mirror-core
+- Demo: Next.js 16, React 19, Tailwind CSS v4, @gravitek/confluence-mirror-core
 
 ## Development Commands
 
@@ -164,7 +164,7 @@ The `packages/next` package was removed due to styling complexity issues. The ap
 
 ### Integration Approaches
 
-1. **Install + Copy**: `npm install confluence-mirror-core` + copy demo components
+1. **Install + Copy**: `npm install @gravitek/confluence-mirror-core` + copy demo components
 2. **Fork Repository**: Clone and customize the entire demo app
 
 ### Documentation Strategy
