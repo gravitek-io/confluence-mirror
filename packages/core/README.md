@@ -130,11 +130,21 @@ transformer.toLocalUrl("https://example.atlassian.net/wiki/spaces/DOC/folder/100
 
 ### Required OAuth2 scopes
 
-For a service account (OAuth2), grant these scopes to read folders and the hierarchy, next to the scopes you already use to read pages:
+A service account (OAuth2) needs these granular scopes, all suffixed with `:confluence`:
 
-- `read:folder:confluence`
-- `read:hierarchical-content:confluence`
-- `read:content.metadata:confluence`
+| Scope | Used for |
+| --- | --- |
+| `read:page:confluence` | Reading pages and their child pages |
+| `read:attachment:confluence` | Attachments and media of a page |
+| `read:user:confluence` | Page authors and the current user |
+| `read:label:confluence` | Page labels |
+| `read:space:confluence` | Resolving the space (key and name) of a page or folder |
+| `read:embed:confluence` | Embedded content |
+| `read:folder:confluence` | Reading folders (`getFolder`), needed since 0.3.0 |
+| `read:hierarchical-content:confluence` | Direct children and ancestors, needed since 0.3.0 |
+| `read:content.metadata:confluence` | Content summaries (`getContentSummary`), needed since 0.3.0 |
+
+The service account must also have access to the Confluence spaces it reads.
 
 ### Processing Functions
 
