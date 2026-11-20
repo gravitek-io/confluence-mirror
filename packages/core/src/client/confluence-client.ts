@@ -342,8 +342,8 @@ export class ConfluenceClient {
    * Throws without any network call for unsupported types.
    */
   private v2Segment(type: ConfluenceContentType): string {
-    // `hasOwn` keeps inherited keys (`constructor`, `__proto__`...) out.
-    if (typeof type !== "string" || !Object.hasOwn(V2_SEGMENTS, type)) {
+    // `hasOwnProperty` keeps inherited keys (`constructor`, `__proto__`...) out.
+    if (typeof type !== "string" || !Object.prototype.hasOwnProperty.call(V2_SEGMENTS, type)) {
       throw new ConfluenceApiError(`Unsupported content type: ${String(type)}`);
     }
     return V2_SEGMENTS[type];
